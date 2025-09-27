@@ -358,11 +358,21 @@ def main():
     # Generate date range
     dates = generate_date_range(args.start_date, args.end_date, args.test)
 
+    # Get members to process
     ensemble_members = get_ensemble_members(args)
 
     # Load checkpoint if resuming
     checkpoint = load_checkpoint() if args.resume else None
 
+    # If output file exists, mv it to a backup file with timestamp
+    if os.path.exists(OUTPUT_FILE):
+        backup_file = (
+            f"{OUTPUT_FILE}.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
+        os.rename(OUTPUT_FILE, backup_file)
+        logger.info(f"Moved existing output file to {backup_file}")
+
+    # Process data
     process_data(dates, ensemble_members, checkpoint)
 
     # Clean up checkpoint
