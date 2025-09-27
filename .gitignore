@@ -2,3 +2,4 @@
 *.pem
 *.csv
 *.idx
+**/gefs_data/*
