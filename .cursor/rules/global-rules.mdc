@@ -4,3 +4,4 @@ alwaysApply: true
 
 - Refer to the project structure in docs/project_structure.md for the project structure.
 - When asked to create a task document, create it in docs/task_docs.
+- If you need to run a python script, use this python executable: /Users/williamhenry/python_venvs/hydro_poc/bin/python
