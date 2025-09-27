@@ -9,6 +9,8 @@ Sequential processing with resume capability and memory-efficient operation.
 Usage:
     python download_gefs_ensemble.py --start-date 2024-01-01 --end-date 2024-01-31
     python download_gefs_ensemble.py --resume  # Resume from checkpoint
+
+Note: Output directory is set via the OUTPUT_DIR global variable (default: 'gefs_data')
 """
 
 import argparse
@@ -37,22 +39,24 @@ ENSEMBLE_MEMBERS = (
     + ["gespr", "geavg"]  # Spread and mean
 )
 
-# Checkpoint file
-CHECKPOINT_FILE = "gefs_checkpoint.json"
-OUTPUT_FILE = "gefs_ensemble_tp.csv"
+# Output directory - change this to customize output location
+OUTPUT_DIR = "gefs_data"
+
+# File paths (computed from OUTPUT_DIR)
+CHECKPOINT_FILE = os.path.join(OUTPUT_DIR, "gefs_checkpoint.json")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "gefs_ensemble_tp.csv")
 
 
-def setup_logging() -> logging.Logger:
-    """Set up logging configuration."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler("gefs_download.log"),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
-    return logging.getLogger(__name__)
+"""Set up logging configuration."""
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("gefs_download.log"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 
 def load_checkpoint() -> Optional[Tuple[str, str, int]]:
@@ -99,7 +103,7 @@ def download_gefs_file(date: str, member: str, hour: int) -> str:
     filename = f"{member}.t{CYCLE}z.pgrb2s.0p25.f{hour:03d}"
     s3_key = f"gefs.{date}/{CYCLE}/{FORECAST_MODEL}/{filename}"
 
-    local_file = filename
+    local_file = os.path.join(OUTPUT_DIR, filename)
 
     # Download file
     s3_client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
@@ -218,8 +222,6 @@ def process_date_member_hour(
         }
         save_result_to_csv(result, output_file)
 
-        # Clean up
-        os.remove(filename)
         logging.info(
             f"Processed: {date} {member} f{hour:03d} -> tp={tp_value:.4f}"
         )
@@ -232,8 +234,13 @@ def process_date_member_hour(
         )
         success = False
 
-    # Clean up any index files created by cfgrib
-    if filename is not None:
+    # Clean up
+    if filename:
+        try:
+            os.remove(filename)
+        except Exception as e:
+            logging.debug(f"Could not clean up {filename}: {e}")
+        # Clean up any index files created by cfgrib
         cleanup_index_files(filename)
     return success
 
@@ -245,7 +252,9 @@ def get_valid_time(date_str: str, hour: int) -> str:
     return valid_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def generate_date_range(start_date: str, end_date: str) -> List[str]:
+def generate_date_range(
+    start_date: str, end_date: str, test: bool = False
+) -> List[str]:
     """Generate list of dates between start and end (inclusive)."""
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -256,65 +265,18 @@ def generate_date_range(start_date: str, end_date: str) -> List[str]:
         dates.append(current.strftime("%Y%m%d"))
         current += timedelta(days=1)
 
+    if test:
+        dates = dates[:1]
     return dates
 
 
-def main():
-    """Main execution function."""
-    parser = argparse.ArgumentParser(
-        description="Download GEFS ensemble precipitation data"
-    )
-    parser.add_argument(
-        "--start-date", required=True, help="Start date (YYYY-MM-DD)"
-    )
-    parser.add_argument(
-        "--end-date", required=True, help="End date (YYYY-MM-DD)"
-    )
-    parser.add_argument(
-        "--resume", action="store_true", help="Resume from checkpoint"
-    )
-    parser.add_argument(
-        "--output", default=OUTPUT_FILE, help="Output CSV file"
-    )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Run test with single date and limited members",
-    )
-
-    args = parser.parse_args()
-
-    logger = setup_logging()
-    logger.info("Starting GEFS ensemble data download")
-
-    # Generate date range
-    dates = generate_date_range(args.start_date, args.end_date)
-
-    if args.test:
-        # Test mode: just one date, first few members
-        dates = dates[:1]  # Just first date
-        ensemble_members = [
-            "c00",
-            "gep01",
-            "gep02",
-            "gespr",
-            "geavg",
-        ]  # Limited test set
-        logger.info("TEST MODE: Processing 1 date with limited members")
-    else:
-        ensemble_members = ENSEMBLE_MEMBERS
-
-    logger.info(
-        f"Processing {len(dates)} dates: {args.start_date} to {args.end_date}"
-    )
-
-    # Load checkpoint if resuming
-    checkpoint = load_checkpoint() if args.resume else None
-
-    # Results are saved incrementally to avoid memory issues
+def process_data(
+    dates: List[str],
+    ensemble_members: List[str],
+    checkpoint: Optional[Tuple[str, str, int]],
+):
+    logger.info(f"Processing {len(dates)} dates: {dates[0]} to {dates[-1]}")
     start_processing = False
-
-    # Main processing loop
     for date in dates:
         logger.info(f"Processing date: {date}")
 
@@ -342,13 +304,66 @@ def main():
 
                 # Process the file (gracefully handles failures)
                 success = process_date_member_hour(
-                    date, member, hour, args.output
+                    date, member, hour, OUTPUT_FILE
                 )
 
                 if success:
                     save_checkpoint(date, member, hour)
 
-    # Results are saved incrementally as each file is processed
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Download GEFS ensemble precipitation data"
+    )
+    parser.add_argument(
+        "--start-date", required=True, help="Start date (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--end-date", required=True, help="End date (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--resume", action="store_true", help="Resume from checkpoint"
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run test with single date and limited members",
+    )
+
+    return parser.parse_args()
+
+
+def get_ensemble_members(args: argparse.Namespace):
+    if args.test:
+        # Test mode: just one date, first few members
+        ensemble_members = [
+            "c00",
+            "gep01",
+            "gep02",
+            "gespr",
+            "geavg",
+        ]  # Limited test set
+        logger.info("TEST MODE: Processing 1 date with limited members")
+    else:
+        ensemble_members = ENSEMBLE_MEMBERS
+    return ensemble_members
+
+
+def main():
+    args = parse_args()
+
+    # Create output directory if it doesn't exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # Generate date range
+    dates = generate_date_range(args.start_date, args.end_date, args.test)
+
+    ensemble_members = get_ensemble_members(args)
+
+    # Load checkpoint if resuming
+    checkpoint = load_checkpoint() if args.resume else None
+
+    process_data(dates, ensemble_members, checkpoint)
 
     # Clean up checkpoint
     if os.path.exists(CHECKPOINT_FILE):
