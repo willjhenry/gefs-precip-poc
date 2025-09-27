@@ -33,7 +33,7 @@ RHINE_POINT = (47.5565597, 8.0483)  # Rhine basin point coordinates
 FORECAST_HOURS = list(range(120, 169, 3))  # 120, 123, 126, ..., 168
 ENSEMBLE_MEMBERS = (
     ["c00"]  # Control member
-    + [f"p{i:02d}" for i in range(1, 31)]  # 30 perturbed members
+    + [f"gep{i:02d}" for i in range(1, 31)]  # 30 perturbed members
     + ["gespr", "geavg"]  # Spread and mean
 )
 
@@ -95,7 +95,8 @@ def download_gefs_file(date: str, member: str, hour: int) -> str:
     Returns:
         Local filename
     """
-    filename = f"gefs.t{CYCLE}z.{member}.0p25.f{hour:03d}"
+    # Correct filename pattern: {member}.t{CYCLE}z.pgrb2s.0p25.f{hour:03d}
+    filename = f"{member}.t{CYCLE}z.pgrb2s.0p25.f{hour:03d}"
     s3_key = f"gefs.{date}/{CYCLE}/{FORECAST_MODEL}/{filename}"
 
     local_file = filename
@@ -144,9 +145,48 @@ def extract_tp_value(filename: str) -> float:
         raise
 
 
+def cleanup_index_files(filename: str) -> None:
+    """
+    Clean up any .idx index files created by cfgrib.
+
+    Args:
+        filename: Base GRIB2 filename (without .idx extension)
+    """
+    try:
+        # cfgrib typically creates .idx files with the same base name
+        idx_filename = f"{filename}.idx"
+        if os.path.exists(idx_filename):
+            os.remove(idx_filename)
+            logging.debug(f"Removed index file: {idx_filename}")
+
+        # Also check for any other potential index files
+        for suffix in [".5b7b6.idx", ".idx"]:  # Common cfgrib index suffixes
+            potential_idx = f"{filename}{suffix}"
+            if os.path.exists(potential_idx):
+                os.remove(potential_idx)
+                logging.debug(f"Removed index file: {potential_idx}")
+
+    except Exception as e:
+        logging.debug(f"Could not clean up index files for {filename}: {e}")
+
+
+def save_result_to_csv(result: dict, output_file: str = OUTPUT_FILE) -> None:
+    """
+    Append a single result to the CSV file.
+
+    Args:
+        result: Dictionary with result data
+        output_file: Path to output CSV file
+    """
+    df = pd.DataFrame([result])
+    # Append mode, no header if file exists
+    file_exists = os.path.exists(output_file)
+    df.to_csv(output_file, mode="a", header=not file_exists, index=False)
+
+
 def process_date_member_hour(
-    date: str, member: str, hour: int, results: List[dict]
-) -> None:
+    date: str, member: str, hour: int, output_file: str = OUTPUT_FILE
+) -> bool:
     """
     Process a single date/member/hour combination.
 
@@ -154,8 +194,13 @@ def process_date_member_hour(
         date: Date in YYYYMMDD format
         member: Ensemble member
         hour: Forecast hour
-        results: List to append results to
+        output_file: Path to output CSV file
+
+    Returns:
+        bool: True if successful, False if failed
     """
+    success = False
+    filename = None
     try:
         # Download file
         filename = download_gefs_file(date, member, hour)
@@ -171,7 +216,7 @@ def process_date_member_hour(
             "tp_value": tp_value,
             "valid_time": get_valid_time(date, hour),
         }
-        results.append(result)
+        save_result_to_csv(result, output_file)
 
         # Clean up
         os.remove(filename)
@@ -179,9 +224,18 @@ def process_date_member_hour(
             f"Processed: {date} {member} f{hour:03d} -> tp={tp_value:.4f}"
         )
 
+        success = True
+
     except Exception as e:
-        logging.error(f"Failed to process {date} {member} f{hour:03d}: {e}")
-        raise
+        logging.warning(
+            f"Failed to process {date} {member} f{hour:03d}: {e} - Skipping"
+        )
+        success = False
+
+    # Clean up any index files created by cfgrib
+    if filename is not None:
+        cleanup_index_files(filename)
+    return success
 
 
 def get_valid_time(date_str: str, hour: int) -> str:
@@ -222,6 +276,11 @@ def main():
     parser.add_argument(
         "--output", default=OUTPUT_FILE, help="Output CSV file"
     )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run test with single date and limited members",
+    )
 
     args = parser.parse_args()
 
@@ -230,6 +289,21 @@ def main():
 
     # Generate date range
     dates = generate_date_range(args.start_date, args.end_date)
+
+    if args.test:
+        # Test mode: just one date, first few members
+        dates = dates[:1]  # Just first date
+        ensemble_members = [
+            "c00",
+            "gep01",
+            "gep02",
+            "gespr",
+            "geavg",
+        ]  # Limited test set
+        logger.info("TEST MODE: Processing 1 date with limited members")
+    else:
+        ensemble_members = ENSEMBLE_MEMBERS
+
     logger.info(
         f"Processing {len(dates)} dates: {args.start_date} to {args.end_date}"
     )
@@ -237,15 +311,14 @@ def main():
     # Load checkpoint if resuming
     checkpoint = load_checkpoint() if args.resume else None
 
-    # Initialize results
-    results = []
+    # Results are saved incrementally to avoid memory issues
     start_processing = False
 
     # Main processing loop
     for date in dates:
         logger.info(f"Processing date: {date}")
 
-        for member in ENSEMBLE_MEMBERS:
+        for member in ensemble_members:
             for hour in FORECAST_HOURS:
                 # Check if we should start processing (for resume)
                 if checkpoint:
@@ -267,22 +340,15 @@ def main():
                 if not start_processing:
                     continue
 
-                try:
-                    process_date_member_hour(date, member, hour, results)
+                # Process the file (gracefully handles failures)
+                success = process_date_member_hour(
+                    date, member, hour, args.output
+                )
+
+                if success:
                     save_checkpoint(date, member, hour)
 
-                except Exception as e:
-                    logger.error(f"Failed on {date} {member} f{hour:03d}: {e}")
-                    # Continue with next item rather than stopping
-                    continue
-
-    # Save results to CSV
-    if results:
-        df = pd.DataFrame(results)
-        df.to_csv(args.output, index=False)
-        logger.info(f"Saved {len(results)} records to {args.output}")
-    else:
-        logger.warning("No data was processed successfully")
+    # Results are saved incrementally as each file is processed
 
     # Clean up checkpoint
     if os.path.exists(CHECKPOINT_FILE):
