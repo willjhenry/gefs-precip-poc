@@ -1,0 +1,12 @@
+pandas==2.3.1
+numpy==2.3.2
+matplotlib==3.10.5
+ipython==9.4.0
+ruff==0.12.9
+ipdb==0.13.13
+boto3==1.40.40
+xarray==2025.9.0
+jupyter==1.1.1
+cfgrib==0.9.15.0
+pyarrow==21.0.0
+plotly==6.3.0

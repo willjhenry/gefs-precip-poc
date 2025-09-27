@@ -1,0 +1,13 @@
+---
+globs: **/*.py
+alwaysApply: false
+---
+
+Always apply the following guidelines to Python code:
+
+- use type hints
+- use f-strings
+- use numpy style docstrings
+- use snake_case for variables, functions, and modules
+- use pascal case for classes
+- apply the single responsibility principle
