@@ -28,7 +28,12 @@ import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
 
-from hydro.common import INTERIM_GEFS_DIR, PROCESSED_DIR, SCRIPTS_DIR
+from hydro.common import (
+    INTERIM_GEFS_DIR,
+    PROCESSED_DIR,
+    SCRIPTS_DIR,
+    grid_point_string,
+)
 
 # Paths
 
@@ -71,16 +76,18 @@ class GEFSDownloader:
         )
         self.test = test
 
-        # Constants
         self.interim_gefs_dir = INTERIM_GEFS_DIR
         self.processed_dir = PROCESSED_DIR
+
+        # Create standardized grid point string like '(47p5,8p0)'
+        location_str = grid_point_string(self.location[0], self.location[1])
         self.output_file = os.path.join(
             self.processed_dir,
-            f"gefs_ensemble_tp_({location[0]:.2f}-{location[1]:.2f}).csv",
+            f"gefs_ensemble_tp_{location_str}.csv",
         )
         self.checkpoint_file = os.path.join(
             SCRIPTS_DIR,
-            f"gefs_checkpoint_({location[0]:.2f}-{location[1]:.2f}).json",
+            f"gefs_checkpoint_{location_str}.json",
         )
 
         self.logger = logger or logging.getLogger(__name__)

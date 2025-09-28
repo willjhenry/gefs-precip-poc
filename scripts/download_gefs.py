@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 
-from hydro.common import RHINE_POINT, SCRIPTS_DIR
+from hydro.common import GRID_RHINE_POINT, SCRIPTS_DIR
 from hydro.data_processors.gefs_downloader import GEFSDownloader
 
 LOG_FILE = os.path.join(SCRIPTS_DIR, "gefs_download.log")
@@ -65,7 +65,7 @@ def main():
     args = parse_args()
 
     gefs_downloader = GEFSDownloader(
-        location=RHINE_POINT,
+        location=GRID_RHINE_POINT,
         start_date=args.start_date,
         end_date=args.end_date,
         test=args.test,

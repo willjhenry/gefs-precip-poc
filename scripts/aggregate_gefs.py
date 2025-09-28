@@ -37,19 +37,17 @@ from hydro.common import DATA_DIR, SCRIPTS_DIR
 from hydro.data_processors.gefs_aggregator import GefsAggregator
 
 
-def setup_paths() -> Tuple[str, str, str, str]:
+def setup_paths() -> Tuple[str, str]:
     """Compute project paths.
 
     Returns
     -------
     tuple of str
-        (scripts_dir, project_root, data_dir, processed_dir)
+        (scripts_dir, processed_dir)
     """
     scripts_dir = SCRIPTS_DIR
-    project_root = os.path.dirname(scripts_dir)
-    data_dir = DATA_DIR
-    processed_dir = os.path.join(data_dir, "processed")
-    return scripts_dir, project_root, data_dir, processed_dir
+    processed_dir = os.path.join(DATA_DIR, "processed")
+    return scripts_dir, processed_dir
 
 
 def setup_logging(log_file: str) -> logging.Logger:
@@ -128,7 +126,7 @@ def parse_args(processed_dir: str) -> argparse.Namespace:
 
 def main() -> None:
     """Entry point for CLI execution."""
-    scripts_dir, project_root, data_dir, processed_dir = setup_paths()
+    scripts_dir, processed_dir = setup_paths()
     log_file = os.path.join(scripts_dir, "gefs_aggregate.log")
     logger = setup_logging(log_file)
 
@@ -136,9 +134,10 @@ def main() -> None:
 
     # Compute default output if not provided
     if args.output_csv is None:
+        # base it off of the input csv
         args.output_csv = os.path.join(
             processed_dir,
-            f"gefs_ensemble_tp_{args.start_hour}-{args.end_hour}.csv",
+            f"{os.path.basename(args.input_csv).split('.')[0]}_{args.start_hour}-{args.end_hour}.csv",
         )
 
     # Ensure output dir exists

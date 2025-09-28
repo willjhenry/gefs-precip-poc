@@ -214,5 +214,12 @@ class GefsAggregator:
 
         # Ensure output dir exists
         os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
-        agg_df.to_csv(self.output_csv, index=False)
+        # find the max and min valid_datetime_start values, convert to YYYY-MM-DD
+        # add then add to the filename
+        date_range_str = f"{pd.to_datetime(agg_df['valid_datetime_start'].min()).strftime('%Y%m%d')}_{pd.to_datetime(agg_df['valid_datetime_start'].max()).strftime('%Y%m%d')}"
+        temp_output_csv = (
+            ".".join(self.output_csv.split(".")[:-1])
+            + f"_{date_range_str}.csv"
+        )
+        agg_df.to_csv(temp_output_csv, index=False)
         self.logger.info(f"Wrote aggregated CSV to {self.output_csv}")

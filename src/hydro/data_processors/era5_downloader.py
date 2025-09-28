@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
+import zipfile
 from typing import Optional, Tuple
 
 from hydro.common import RAW_ERA5_DIR
@@ -67,7 +69,7 @@ class Era5Downloader:
         """
         safe_start = start_date.replace("-", "")
         safe_end = end_date.replace("-", "")
-        filename = f"era5_{variable}_{safe_start}_{safe_end}.nc"
+        filename = f"era5_{variable}_{safe_start}_{safe_end}.zip"
         return os.path.join(self.output_dir, filename)
 
     @staticmethod
@@ -148,6 +150,37 @@ class Era5Downloader:
             self.logger.info(
                 f"Successfully downloaded ERA5 data to {output_file}"
             )
+
+            # Handle potential ZIP compression from CDS API
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                try:
+                    with zipfile.ZipFile(output_file, "r") as zip_ref:
+                        zip_ref.extractall(temp_dir)
+                        inner_files = [
+                            f
+                            for f in os.listdir(temp_dir)
+                            if f.endswith(".nc")
+                        ]
+                        if len(inner_files) == 1:
+                            inner_nc = os.path.join(temp_dir, inner_files[0])
+                            new_name = output_file.replace(".zip", ".nc")
+                            os.rename(inner_nc, new_name)
+                            os.remove(output_file)
+                            self.logger.info(
+                                f"Extracted ZIP and moved inner NetCDF to {new_name}"
+                            )
+                        else:
+                            self.logger.warning(
+                                f"ZIP contained {len(inner_files)} .nc files; not extracting automatically."
+                            )
+                except zipfile.BadZipFile:
+                    # Not a ZIP; it's already the NetCDF
+                    self.logger.info(
+                        f"Downloaded file is not ZIP; assuming direct NetCDF at {output_file}"
+                    )
+                    pass
+
             return output_file
         except Exception:
             self.logger.exception("Failed to download ERA5 data")
