@@ -23,12 +23,21 @@ import cdsapi
 
 from hydro.common import GRID_RHINE_POINT
 
+# Paths
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPTS_DIR)
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+RAW_ERA5_DIR = os.path.join(DATA_DIR, "raw", "era5")
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+
+LOG_FILE = os.path.join(SCRIPTS_DIR, "era5_download.log")
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("era5_download.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -39,7 +48,7 @@ def download_era5_data(
     variable: str,
     start_date: str,
     end_date: str,
-    output_dir: str = "era5_data",
+    output_dir: str = RAW_ERA5_DIR,
 ) -> str:
     """
     Download ERA5 data for specified variable and date range.
@@ -92,8 +101,8 @@ def download_era5_data(
 
     try:
         client = cdsapi.Client()
-        result = client.retrieve(dataset, request)
-        result.download(output_file)
+        # Write directly to the target NetCDF path
+        client.retrieve(dataset, request, target=output_file)
 
         logger.info(f"Successfully downloaded ERA5 data to {output_file}")
         return output_file
@@ -135,8 +144,8 @@ def main():
     )
     parser.add_argument(
         "--output-dir",
-        default="era5_data",
-        help="Output directory (default: era5_data)",
+        default=RAW_ERA5_DIR,
+        help="Output directory (default: data/raw/era5)",
     )
 
     args = parser.parse_args()
