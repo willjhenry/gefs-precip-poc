@@ -12,3 +12,5 @@ pyarrow==21.0.0
 plotly==6.3.0
 cdsapi==0.7.6
 nbstripout-fast==1.1.1
+-e .
+

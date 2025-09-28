@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools >= 64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hydro"
+version = "0.1.0"
+description = "Proof-of-concept for GEFS precipitation post-processing"
+authors = [{name = "William Henry"}]
+requires-python = ">=3.10"
+dependencies = []  # Runtime deps handled by setup.py
+
+[project.optional-dependencies]
+dev = []  # Can add from requirements.txt if needed

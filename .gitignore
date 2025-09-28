@@ -1,5 +1,13 @@
+data/
+models/
+results/__pycache__/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.nc
+*.csv
 *.log
 *.pem
-*.csv
 *.idx
 **/gefs_data/*
+**/*.egg-info/*
