@@ -17,5 +17,6 @@ cdsapi==0.7.6
 nbstripout-fast==1.1.1
 scipy==1.16.2
 netcdf4==1.7.2
+seaborn==0.13.2
 -e .
 

@@ -216,7 +216,9 @@ markupsafe==3.0.3
     #   jinja2
     #   nbconvert
 matplotlib==3.10.5
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   seaborn
 matplotlib-inline==0.1.7
     # via
     #   ipykernel
@@ -262,6 +264,7 @@ numpy==2.3.2
     #   netcdf4
     #   pandas
     #   scipy
+    #   seaborn
     #   xarray
 packaging==25.0
     # via
@@ -278,6 +281,7 @@ packaging==25.0
 pandas==2.3.1
     # via
     #   -r requirements.in
+    #   seaborn
     #   xarray
 pandocfilters==1.5.1
     # via nbconvert
@@ -369,6 +373,8 @@ ruff==0.12.9
 s3transfer==0.14.0
     # via boto3
 scipy==1.16.2
+    # via -r requirements.in
+seaborn==0.13.2
     # via -r requirements.in
 send2trash==1.8.3
     # via jupyter-server
