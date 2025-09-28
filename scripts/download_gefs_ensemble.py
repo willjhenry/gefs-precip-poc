@@ -10,7 +10,10 @@ Usage:
     python download_gefs_ensemble.py --start-date 2024-01-01 --end-date 2024-01-31
     python download_gefs_ensemble.py --resume  # Resume from checkpoint
 
-Note: Output directory is set via the OUTPUT_DIR global variable (default: 'gefs_data')
+Notes:
+    - GRIB files are downloaded to `data/interim/gefs/` (temporary working files)
+    - Extracted CSV is saved to `data/processed/gefs_ensemble_tp.csv`
+    - Log and checkpoint files are stored in the `scripts/` directory
 """
 
 import argparse
@@ -27,11 +30,12 @@ import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
 
+from hydro.common import RHINE_POINT
+
 # Configuration
 GEFS_BUCKET = "noaa-gefs-pds"
 FORECAST_MODEL = "atmos/pgrb2sp25"
 CYCLE = "00"  # 00z cycle only
-RHINE_POINT = (47.5565597, 8.0483)  # Rhine basin point coordinates
 FORECAST_HOURS = list(range(120, 169, 3))  # 120, 123, 126, ..., 168
 ENSEMBLE_MEMBERS = (
     ["c00"]  # Control member
@@ -39,12 +43,16 @@ ENSEMBLE_MEMBERS = (
     + ["gespr", "geavg"]  # Spread and mean
 )
 
-# Output directory - change this to customize output location
-OUTPUT_DIR = "gefs_data"
+# Paths
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPTS_DIR)
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+INTERIM_GEFS_DIR = os.path.join(DATA_DIR, "interim", "gefs")
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
 
-# File paths (computed from OUTPUT_DIR)
-CHECKPOINT_FILE = os.path.join(OUTPUT_DIR, "gefs_checkpoint.json")
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "gefs_ensemble_tp.csv")
+LOG_FILE = os.path.join(SCRIPTS_DIR, "gefs_download.log")
+CHECKPOINT_FILE = os.path.join(SCRIPTS_DIR, "gefs_checkpoint.json")
+OUTPUT_FILE = os.path.join(PROCESSED_DIR, "gefs_ensemble_tp.csv")
 
 
 """Set up logging configuration."""
@@ -52,7 +60,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("gefs_download.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -103,7 +111,7 @@ def download_gefs_file(date: str, member: str, hour: int) -> str:
     filename = f"{member}.t{CYCLE}z.pgrb2s.0p25.f{hour:03d}"
     s3_key = f"gefs.{date}/{CYCLE}/{FORECAST_MODEL}/{filename}"
 
-    local_file = os.path.join(OUTPUT_DIR, filename)
+    local_file = os.path.join(INTERIM_GEFS_DIR, filename)
 
     # Download file
     s3_client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
@@ -352,8 +360,9 @@ def get_ensemble_members(args: argparse.Namespace):
 def main():
     args = parse_args()
 
-    # Create output directory if it doesn't exist
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    # Ensure required directories exist
+    os.makedirs(INTERIM_GEFS_DIR, exist_ok=True)
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     # Generate date range
     dates = generate_date_range(args.start_date, args.end_date, args.test)
