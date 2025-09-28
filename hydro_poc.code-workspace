@@ -90,6 +90,7 @@
       "pytest",
       "pytorch",
       "quantiles",
+      "reqs",
       "rhine",
       "scikit",
       "scipy",
