@@ -11,3 +11,4 @@ __pycache__/
 *.idx
 **/gefs_data/*
 **/*.egg-info/*
+*.json
