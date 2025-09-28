@@ -7,11 +7,11 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 **Project Goal**: Build and compare CRPS-optimized Gamma NN vs. Bayesian NN to adjust GEFS ensembles, focusing on extreme precipitation events. Output: Notebook with models, evaluations, and tail improvement plots.
 
 **Current Date**: Sunday, September 28, 2025  
-**Overall Status**: Phase 1 in progress (80% complete); Phases 2-6 pending. On track for weekend completion.
+**Overall Status**: Phase 1 in progress (85% complete); Phases 2-6 pending. On track for weekend completion.
 
 ## Phase-by-Phase Progress
 
-### Phase 1: Data Acquisition and Processing (In Progress - 80%)
+### Phase 1: Data Acquisition and Processing (In Progress - 85%)
 
 **Goal**: Download and prep ~700 samples of GEFS ensemble precip + ERA5 ground truth + predictors for Rhine basin (lat 47-50°N, lon 7-10°E).
 
@@ -22,6 +22,12 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 - Incremental CSV saving with metadata (forecast_date, ensemble_member, forecast_hour, tp_value, valid_time).
 - Robust features: Resume checkpointing, error handling, sequential processing, file cleanup.
 - Local testing: 1-day validation (68 records).
+- Directory structure aligned with scripts:
+  - GEFS GRIB temp: `data/interim/gefs/`
+  - GEFS extracted CSV: `data/processed/gefs_ensemble_tp.csv`
+  - ERA5 NetCDF: `data/raw/era5/`
+  - Logs/checkpoint: `scripts/`
+- ERA5 downloader updated to default to `data/raw/era5` and fixed CDS API target writing.
 - AWS deployment: Script running on EC2 for 1-month POC (2025-01-01 to 2025-01-31, ~22,000 files; expected 15-20 hours compute).
 
 **Pending**:
@@ -129,8 +135,9 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 
 ## Next Immediate Steps
 
-1. **Complete Phase 1**: Wait for AWS run; download CSV; get ERA5 data (I can provide code).
-2. **Phase 2 EDA**: Quick plots once data ready—confirm tail issues.
-3. **Update This Doc**: After each phase, mark completed and adjust estimates.
+1. Run ERA5 downloader for Jan 2025 to `data/raw/era5` (hourly tp, t2m).
+2. Transform to daily aggregates + lag features → `data/processed/era5_processed_daily.csv`.
+3. When AWS completes, merge GEFS CSV with ERA5 daily for modeling dataset.
+4. Start Phase 2 EDA on merged data.
 
 This keeps us organized—let me know when AWS finishes or if you need ERA5 code! 🚀

@@ -6,30 +6,26 @@
 │ ├── 04_crps_nn.ipynb
 │ ├── 05_bayesian_nn.ipynb
 │ └── 06_evaluation.ipynb
-├── scripts/ # Command-line executable scripts
-│ ├── download_gefs.py # CLI wrapper for GEFS download
-│ ├── download_era5.py # CLI wrapper for ERA5 download
-│ └── preprocess_data.py # CLI wrapper for preprocessing pipeline
-├── src/ # Reusable Python modules
-│ ├── data/
-│ │ ├── **init**.py
-│ │ ├── download_gefs.py # Core GEFS download functions
-│ │ ├── download_era5.py # Core ERA5 download functions
-│ │ └── preprocessing.py # Core preprocessing functions
-│ ├── models/
-│ │ ├── **init**.py
-│ │ ├── crps_nn.py
-│ │ ├── bayesian_nn.py
-│ │ └── evaluation.py
-│ └── utils/
+├── scripts/ # Command-line executable scripts (logs/checkpoints stored here)
+│ ├── download_gefs_ensemble.py # GEFS ensemble tp extraction (GRIB → CSV)
+│ ├── download_era5.py # ERA5 reanalysis download (NetCDF)
+│ ├── gefs_download.log
+│ ├── era5_download.log
+│ └── gefs_checkpoint.json
+├── src/ # Reusable Python package (editable install)
+│ └── hydro/
 │ ├── **init**.py
-│ ├── plotting.py
-│ ├── metrics.py
-│ └── config.py
+│ ├── common.py # Shared constants (e.g., GRID_RHINE_POINT)
+│ └── data/
+│ ├── **init**.py
+│ └── era5_downloader.py # Era5Downloader class used by scripts/download_era5.py
 ├── data/ # Data storage (gitignored)
-│ ├── raw/ # Original GEFS/ERA5 downloads
-│ ├── processed/ # Cleaned datasets
-│ └── interim/ # Temporary processing files
+│ ├── raw/
+│ │ └── era5/ # ERA5 NetCDF downloads
+│ ├── processed/
+│ │ └── gefs_ensemble_tp.csv # Extracted tp from GEFS ensembles
+│ └── interim/
+│ └── gefs/ # Temporary GRIB downloads during processing
 ├── models/ # Saved model artifacts (gitignored)
 ├── results/ # Outputs and visualizations
 │ ├── plots/
