@@ -194,20 +194,20 @@ class GEFSDownloader:
             filename = self._download_gefs_file(date, member, hour)
 
             # Extract tp value
-            tp_value = self._extract_tp_value(filename)
+            tp = self._extract_tp(filename)
 
             # Record result
             result = {
                 "forecast_date": date,
                 "ensemble_member": member,
                 "forecast_hour": hour,
-                "tp_value": tp_value,
+                "tp": tp,
                 "valid_time": self._get_valid_time(date, hour),
             }
             self._save_result_to_csv(result)
 
             self.logger.info(
-                f"Processed: {date} {member} f{hour:03d} -> tp={tp_value:.4f}"
+                f"Processed: {date} {member} f{hour:03d} -> tp={tp:.4f}"
             )
 
             success = True
@@ -257,7 +257,7 @@ class GEFSDownloader:
             self.logger.error(f"Failed to download {filename}: {e}")
             raise
 
-    def _extract_tp_value(self, filename: str) -> float:
+    def _extract_tp(self, filename: str) -> float:
         """
         Extract total precipitation value at Rhine point from GRIB2 file.
 
@@ -283,9 +283,9 @@ class GEFSDownloader:
             )
 
             # Get tp value
-            tp_value = float(rhine_data["tp"].values)
+            tp = float(rhine_data["tp"].values)
 
-            return tp_value
+            return tp
 
         except Exception as e:
             self.logger.error(f"Failed to extract tp from {filename}: {e}")

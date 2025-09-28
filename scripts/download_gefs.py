@@ -22,7 +22,7 @@ import os
 import sys
 
 from hydro.common import RHINE_POINT, SCRIPTS_DIR
-from hydro.data_processing.gefs_downloader import GEFSDownloader
+from hydro.data_processors.gefs_downloader import GEFSDownloader
 
 LOG_FILE = os.path.join(SCRIPTS_DIR, "gefs_download.log")
 

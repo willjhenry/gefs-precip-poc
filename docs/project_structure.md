@@ -16,14 +16,16 @@
 │ └── hydro/
 │ ├── **init**.py
 │ ├── common.py # Shared constants (e.g., GRID_RHINE_POINT)
-│ └── data/
+│ └── data_processors/
 │ ├── **init**.py
-│ └── era5_downloader.py # Era5Downloader class used by scripts/download_era5.py
+│ ├── era5_downloader.py # Era5Downloader class used by scripts/download_era5.py
+│ └── gefs_aggregator.py # GefsAggregator class used by scripts/aggregate_gefs_tp_120_168.py
 ├── data/ # Data storage (gitignored)
 │ ├── raw/
 │ │ └── era5/ # ERA5 NetCDF downloads
 │ ├── processed/
-│ │ └── gefs_ensemble_tp.csv # Extracted tp from GEFS ensembles
+│ │ ├── gefs_ensemble_tp.csv # Raw per-hour tp from GEFS ensembles
+│ │ └── gefs_ensemble_tp_120_168.csv # Aggregated tp (120-168 hours) from GefsAggregator
 │ └── interim/
 │ └── gefs/ # Temporary GRIB downloads during processing
 ├── models/ # Saved model artifacts (gitignored)

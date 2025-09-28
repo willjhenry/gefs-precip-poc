@@ -20,7 +20,7 @@ import os
 import sys
 
 from hydro.common import GRID_RHINE_POINT, SCRIPTS_DIR
-from hydro.data_processing.era5_downloader import Era5Downloader
+from hydro.data_processors.era5_downloader import Era5Downloader
 
 LOG_FILE = os.path.join(SCRIPTS_DIR, "era5_download.log")
 

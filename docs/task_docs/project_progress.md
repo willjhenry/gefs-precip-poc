@@ -19,7 +19,7 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 
 - GEFS download pipeline: Standalone script (`scripts/download_gefs_ensemble.py`) handles 30 perturbed + control + spread + mean, 120-168 hour forecasts (3-hour intervals, 00z cycle).
 - Rhine point extraction: tp values at (47.5565597, 8.0483).
-- Incremental CSV saving with metadata (forecast_date, ensemble_member, forecast_hour, tp_value, valid_time).
+- Incremental CSV saving with metadata (forecast_date, ensemble_member, forecast_hour, tp, valid_time).
 - Robust features: Resume checkpointing, error handling, sequential processing, file cleanup.
 - Local testing: 1-day validation (68 records).
 - Directory structure aligned with scripts:

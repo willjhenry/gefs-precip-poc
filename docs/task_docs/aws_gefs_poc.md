@@ -45,7 +45,7 @@ Local Machine → AWS EC2 (script execution) → NOAA GEFS S3 → Sequential Pro
 - [x] **Rhine basin point location extraction** - Single point tp values at (47.5565597, 8.0483)
 - [x] **Robust checkpointing system** - JSON-based resume capability with atomic writes
 - [x] **Comprehensive error handling** - Graceful failure handling, missing member detection, network retry logic
-- [x] **CSV output format with metadata** - Incremental saving with (date, member, hour, tp_value, valid_time)
+- [x] **CSV output format with metadata** - Incremental saving with (date, member, hour, tp, valid_time)
 - [x] **Progress tracking and logging** - Detailed logging with processing status updates
 - [x] **Tested with sample data** - Successfully processed 1 day (68 records across 4 ensemble members)
 - [x] **Requirements file created** - `requirements_gefs.txt` with all dependencies
@@ -57,7 +57,7 @@ Local Machine → AWS EC2 (script execution) → NOAA GEFS S3 → Sequential Pro
 - [x] **Script framework validated** - Successfully processes 1 day test data (68 records, ~4% of daily target)
 - [x] **Memory-efficient processing** - Sequential file processing with immediate cleanup
 - [x] **Robust resume capability** - JSON checkpointing system implemented and tested
-- [x] **CSV output format** - Complete metadata structure (forecast_date, ensemble_member, forecast_hour, tp_value, valid_time)
+- [x] **CSV output format** - Complete metadata structure (forecast_date, ensemble_member, forecast_hour, tp, valid_time)
 - [x] **Progress tracking** - Comprehensive logging with processing status updates
 - [x] **Error handling** - Graceful failure handling for missing ensemble members and network issues
 - [x] **Script successfully processes 1 month of GEFS ensemble data (~22,000 files)** - Currently running on AWS for 2025-01 (expected completion: ~15-20 hours compute time)
@@ -97,7 +97,7 @@ Local Machine → AWS EC2 (script execution) → NOAA GEFS S3 → Sequential Pro
 
 - ✅ Successfully processed 1 day (2024-01-01) test data
 - ✅ Generated 68 precipitation records across 4 ensemble members
-- ✅ CSV output format: `forecast_date,ensemble_member,forecast_hour,tp_value,valid_time`
+- ✅ CSV output format: `forecast_date,ensemble_member,forecast_hour,tp,valid_time`
 - ✅ Memory usage remains constant regardless of dataset size
 - ✅ Resume capability validated (checkpoint system functional)
 
@@ -139,8 +139,8 @@ for each_date in date_range:
     for each_member in ['c00', 'p01'-'p30', 'gespr', 'geavg']:
         for each_hour in [120, 123, 126, ..., 168]:
             download_file(date, member, hour)
-            extract_tp_value(rhine_point)
-            record_to_csv(date, member, hour, tp_value)
+            extract_tp(rhine_point)
+            record_to_csv(date, member, hour, tp)
             delete_file()
             update_checkpoint()
 ```
