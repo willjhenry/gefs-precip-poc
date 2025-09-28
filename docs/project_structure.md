@@ -38,6 +38,5 @@
 ├── tests/ # Unit tests (optional)
 ├── docs/ # Documentation (already exists)
 ├── .gitignore # Ignore data/, models/, **pycache**/
-├── pyproject.toml # Python project configuration
 ├── requirements.txt # Already exists
 └── README.md # Project overview and setup
