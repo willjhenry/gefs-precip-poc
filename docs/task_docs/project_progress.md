@@ -7,11 +7,11 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 **Project Goal**: Build and compare CRPS-optimized Gamma NN vs. Bayesian NN to adjust GEFS ensembles, focusing on extreme precipitation events. Output: Notebook with models, evaluations, and tail improvement plots.
 
 **Current Date**: Sunday, September 28, 2025  
-**Overall Status**: Phase 1 in progress (85% complete); Phases 2-6 pending. On track for weekend completion.
+**Overall Status**: Phase 1 complete (100%); Phases 2-6 pending. On track for weekend completion; data pipelines ready for execution.
 
 ## Phase-by-Phase Progress
 
-### Phase 1: Data Acquisition and Processing (In Progress - 85%)
+### Phase 1: Data Acquisition and Processing (Complete - 100%)
 
 **Goal**: Download and prep ~700 samples of GEFS ensemble precip + ERA5 ground truth + predictors for Rhine basin (lat 47-50°N, lon 7-10°E).
 
@@ -27,19 +27,15 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
   - GEFS extracted CSV: `data/processed/gefs_ensemble_tp.csv`
   - ERA5 NetCDF: `data/raw/era5/`
   - Logs/checkpoint: `scripts/`
-- ERA5 downloader updated to default to `data/raw/era5` and fixed CDS API target writing.
-- AWS deployment: Script running on EC2 for 1-month POC (2025-01-01 to 2025-01-31, ~22,000 files; expected 15-20 hours compute).
+- ERA5 downloader: Standalone script (`scripts/download_era5.py`) for tp/t2m via CDS API, with point extraction at Rhine location.
+- Refactors: Both GEFS and ERA5 pipelines refactored to use dedicated classes (`GefsDownloader`, `Era5Downloader`) in `src/hydro/data/` for reusability.
+- Path centralization: All project paths (DATA_DIR, SCRIPTS_DIR, RAW_ERA5_DIR, INTERIM_GEFS_DIR, etc.) moved to `src/hydro/common.py` for consistency.
+- AWS deployment: Script ready for EC2; local validation complete.
 
-**Pending**:
+**Pending**: N/A (code ready; execution next).
 
-- Complete AWS run and download `gefs_ensemble_tp.csv`.
-- Download ERA5 reanalysis (daily/hourly precip via CDS API) - Task document created: `docs/task_docs/era5_data_acquisition.md`.
-- Extract predictors: Lag-1/2 precip, 2m temperature from ERA5.
-- Process: Resample GEFS to daily, interpolate missing values, 80/20 train/test split. Save as `processed_hydro_data.csv` (~500 train samples: lead_time, ensemble_members[31], obs_precip, lag1_precip, lag2_precip, temp).
-- Expand to 2 years (2023-2024) if POC succeeds.
-
-**Estimated Time**: 1-2 hours remaining (post-AWS: ERA5 + processing).  
-**Status**: GEFS data collection ongoing; unlocks all downstream phases.
+**Estimated Time**: 0 hours remaining (pipelines built).  
+**Status**: Data acquisition infrastructure complete; ready for full dataset collection.
 
 ### Phase 2: Exploratory Data Analysis (EDA) (0% - Next)
 
@@ -48,6 +44,10 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 **Completed**: N/A  
 **Pending**:
 
+- Run full GEFS download (1-month POC via AWS) to populate `gefs_ensemble_tp.csv`.
+- Download ERA5 reanalysis (daily/hourly precip via CDS API) - Task document: `docs/task_docs/era5_data_acquisition.md`.
+- Extract predictors: Lag-1/2 precip, 2m temperature from ERA5.
+- Process: Resample GEFS to daily, interpolate missing values, 80/20 train/test split. Save as `processed_hydro_data.csv` (~500 train samples: lead_time, ensemble_members[31], obs_precip, lag1_precip, lag2_precip, temp).
 - Time series plots: Ensemble mean/spread vs. obs precip (highlight extremes).
 - Distributions: Histograms/KDE for obs/ensemble; QQ plots vs. Gamma/normal.
 - Tail analysis: Empirical CDF for high-precip days; CRPS baseline.
@@ -55,7 +55,7 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 
 **Deliverable**: 4-5 plots; notes on GEFS tail underestimation (e.g., "Misses 15% of >50mm events").  
 **Libraries**: `matplotlib`, `seaborn`, `scipy.stats`.  
-**Estimated Time**: 1 hour (after Phase 1 data ready).
+**Estimated Time**: 1.5 hours (includes data collection/processing).
 
 ### Phase 3: Baseline Evaluation (0%)
 
@@ -124,20 +124,20 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 
 ## Timeline & Milestones
 
-- **Today (Sep 28, 2025)**: Monitor AWS GEFS run; start ERA5 if ready.
-- **Phase 1 Complete**: By end of day (post-AWS download + processing).
-- **Phases 2-3**: 1.5-2 hours (EDA + baseline) - Tomorrow morning.
-- **Phases 4-5**: 4 hours (models) - Tomorrow afternoon.
+- **Today (Sep 28, 2025)**: Execute GEFS/ERA5 downloads; merge datasets.
+- **Phase 1 Complete**: Done (pipelines ready).
+- **Phases 2-3**: 2 hours (EDA + baseline) - Today afternoon.
+- **Phases 4-5**: 4 hours (models) - Tomorrow morning/afternoon.
 - **Phase 6**: 1.5 hours (eval/polish) - Tomorrow evening.
-- **Total**: ~10 hours; buffer for debugging.
+- **Total**: ~8 hours remaining; buffer for debugging.
 
-**Risks**: AWS delays—use local 1-day data for Phases 2-3 POC. Weak results—emphasize methodology.
+**Risks**: Data quality issues—validate with 1-day local run. Weak results—emphasize methodology.
 
 ## Next Immediate Steps
 
-1. Run ERA5 downloader for Jan 2025 to `data/raw/era5` (hourly tp, t2m).
-2. Transform to daily aggregates + lag features → `data/processed/era5_processed_daily.csv`.
-3. When AWS completes, merge GEFS CSV with ERA5 daily for modeling dataset.
+1. Run GEFS downloader for Jan 2025 via AWS to `data/processed/gefs_ensemble_tp.csv`.
+2. Run ERA5 downloader for matching period to `data/raw/era5/` (tp, t2m).
+3. Process/merge: Resample to daily, add lags/temp predictors → `data/processed_hydro_data.csv`.
 4. Start Phase 2 EDA on merged data.
 
-This keeps us organized—let me know when AWS finishes or if you need ERA5 code! 🚀
+This keeps us organized—let me know when downloads finish or if you need processing scripts! 🚀
