@@ -55,8 +55,7 @@ See `docs/project_structure.md` for the project structure.
 
 See the docs/data_processing_guide.md file for the data processing guide.
 
-### Development Workflow
+## TODOs
 
-1. **Data Processing**: Use Jupyter notebooks in the `notebooks/` directory for exploratory analysis
-2. **Model Development**: Implement and compare CRPS-optimized and Bayesian neural networks
-3. **Evaluation**: Compare baseline GEFS performance against post-processed forecasts
+- Implement the Bayesian Neural Network
+- Clean up and streamline data getting and processing code
