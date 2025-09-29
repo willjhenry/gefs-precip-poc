@@ -1,4 +1,4 @@
-hydro_poc/
+project_root/
 ├── notebooks/ # Jupyter notebooks for exploration/modeling
 │ ├── laufenburg_precip_forecast_exploration.ipynb
 │ ├── noaa_gfs_quickstart.ipynb
