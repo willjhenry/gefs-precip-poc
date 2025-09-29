@@ -1,5 +1,6 @@
 data/
 models_artifacts/
+.cursor/
 results/__pycache__/
 __pycache__/
 *.pyc
