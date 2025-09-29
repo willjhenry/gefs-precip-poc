@@ -4,24 +4,17 @@ A proof-of-concept machine learning project for improving GEFS (Global Ensemble 
 
 The focus will be in the Laufenburg region, specifically around the Laufenburg hydropower plant on the Swiss-German border. This is part of the High Rhine sub-basin, which is a hydropower-heavy region. Attempts will be made to improve upon the GEFS ensemble total precipitation 120-144h forecast for the Laufenburg region (one grid point for now).
 
-See the luafenburg_precip_forecast_exploration.ipynb notebook for the exploration of the data and the models.
+See the luafenburg_precip_forecast_exploration.ipynb notebook for the exploration of the data and the model(s). Code for downloading and arranging the data is in the scripts/ directory. A 'hydro' python package is used for the models and data processing classes.
 
 ## Overview
 
 This project demonstrates how to adjust GEFS ensemble precipitation forecasts to better capture tail events (extreme rainfall) using two approaches:
 
 - **CRPS-optimized Gamma Neural Network**: A deterministic neural network trained with Continuous Ranked Probability Score (CRPS) loss
-- **Bayesian Neural Network**: A probabilistic approach providing uncertainty quantification
+
+- **Bayesian Neural Network**: (Not implemented yet) A probabilistic approach providing uncertainty quantification
 
 The project targets a specific Rhine basin location (47.5565597°N, 8.0483°E) and compares raw GEFS performance against post-processed forecasts, emphasizing improvements in extreme precipitation prediction.
-
-## Features
-
-- **Automated GEFS Data Acquisition**: Downloads and processes GEFS ensemble data from NOAA's AWS Open Data
-- **ERA5 Ground Truth Integration**: Incorporates ERA5 reanalysis data for reliable ground truth observations
-- **Incremental Processing**: Memory-efficient CSV saving with checkpointing for large-scale processing
-- **Modular Architecture**: Clean separation between data acquisition, processing, and modeling
-- **Reproducible Environment**: Full dependency management with `pip-tools`
 
 ## Installation
 
@@ -52,51 +45,18 @@ The project targets a specific Rhine basin location (47.5565597°N, 8.0483°E) a
    pip-sync     # Syncs environment with exact versions and installs the package
    ```
 
-### Dependencies
-
-Key dependencies include:
-
-- `xarray`, `pandas`: Data manipulation
-- `cfgrib`: GRIB2 file handling for meteorological data
-- `boto3`: AWS S3 access for GEFS data
-- `cdsapi`: Copernicus Climate Data Store for ERA5 data
-- `matplotlib`, `plotly`: Visualization
-- `jupyter`: Interactive development
-
 ## Usage
+
+### Project Structure
+
+See `docs/project_structure.md` for the project structure.
 
 ### Data Acquisition
 
-#### GEFS Ensemble Data
-
-Download GEFS ensemble precipitation data for a specified date range:
-
-```bash
-# Download for a single date (local testing)
-python scripts/download_gefs_ensemble.py --start-date 2025-01-01 --end-date 2025-01-01
-
-# Download for multiple dates (AWS deployment)
-python scripts/download_gefs_ensemble.py --start-date 2025-01-01 --end-date 2025-01-31 --output-dir /path/to/output
-```
-
-#### ERA5 Reanalysis Data
-
-Download ERA5 precipitation and temperature data for ground truth and predictors:
-
-```bash
-# Download precipitation data
-python scripts/download_era5.py --variable tp --start-date 2025-01-01 --end-date 2025-01-31
-
-# Download temperature data
-python scripts/download_era5.py --variable t2m --start-date 2025-01-01 --end-date 2025-01-31
-```
+See the docs/data_processing_guide.md file for the data processing guide.
 
 ### Development Workflow
 
 1. **Data Processing**: Use Jupyter notebooks in the `notebooks/` directory for exploratory analysis
 2. **Model Development**: Implement and compare CRPS-optimized and Bayesian neural networks
 3. **Evaluation**: Compare baseline GEFS performance against post-processed forecasts
-
-### Project Structure
-
-See `docs/project_structure.md` for the project structure.
