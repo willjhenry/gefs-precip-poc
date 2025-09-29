@@ -1,8 +1,10 @@
-# GEFS Precipitation Post-Processing POC
+# GEFS Precipitation Post-Processing POC Weekend Project
 
 A proof-of-concept machine learning project for improving GEFS (Global Ensemble Forecast System) precipitation ensemble forecasts through post-processing, with a focus on extreme precipitation events for hydropower applications.
 
-The focus will be in the Laufenburg region, specifically around the Laufenburg hydropower plant on the Swiss-German border. This is part of the High Rhine sub-basin, which is a hydropower-heavy region.
+The focus will be in the Laufenburg region, specifically around the Laufenburg hydropower plant on the Swiss-German border. This is part of the High Rhine sub-basin, which is a hydropower-heavy region. Attempts will be made to improve upon the GEFS ensemble total precipitation 120-144h forecast for the Laufenburg region (one grid point for now).
+
+See the luafenburg_precip_forecast_exploration.ipynb notebook for the exploration of the data and the models.
 
 ## Overview
 
