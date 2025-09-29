@@ -143,4 +143,65 @@ Example:
 - ERA5 hourly CSVs: `data/processed/era5_tp_(47p5,8p0)_<start>_<end>.csv`, `era5_t2m_(...)`
 - ERA5 daily aggregated: `data/processed/era5_tp_daily_(47p5,8p0)_<start>_<end>.csv`, `era5_t2m_daily_(...)`
 
-At this point, the daily GEFS and ERA5 datasets are ready to be merged for exploratory analysis and modeling (outside the scope of this document).
+At this point, the daily GEFS and ERA5 datasets are ready to be merged into a modeling dataset. See the next sections to assemble the dataset and split into train/test.
+
+## Assemble Merged Dataset (GEFS + ERA5)
+
+Build a single, wide CSV that contains:
+
+- Pivoted GEFS member columns (e.g., `gefs_gec00`, `gefs_gep01`, ...)
+- ERA5 daily truth aligned to the GEFS valid window (`era5_tp`)
+- Lag-1 predictors from ERA5 (`era5_tp_lag1`, `era5_t2m_min/mean/max_lag1`)
+- GEFS ensemble statistics derived from perturbed members (`gefs_ensemble_min`, `gefs_ensemble_max`, `gefs_ensemble_q10`, `gefs_ensemble_q90`, `gefs_ensemble_skew`, `gefs_ensemble_kurtosis`)
+- Monthly indicator columns based on `valid_datetime_start` (`jan`..`dec`)
+
+- Script: `scripts/build_dataset.py`
+- Inputs:
+  - GEFS aggregated CSV(s): `data/processed/gefs_ensemble_tp_(<grid>)_<lead-range>_<dates>.csv`
+  - ERA5 daily tp: `data/processed/era5_tp_daily_(<grid>)_<dates>.csv`
+  - ERA5 daily t2m: `data/processed/era5_t2m_daily_(<grid>)_<dates>.csv`
+- Output:
+  - `data/processed/dataset_gefs_era5_(<grid>)_<lead-range>_<start>_<end>.csv`
+
+Examples:
+
+```bash
+# Auto-detect latest ERA5 daily files and all matching GEFS aggregated CSVs
+/Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/build_dataset.py
+
+# Explicit inputs and output
+/Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/build_dataset.py \
+  --gefs-csv data/processed/gefs_ensemble_tp_(47p5,8p0)_120-144_20230106_20250206.csv \
+  --era5-tp-daily data/processed/era5_tp_daily_(47p5,8p0)_20230101_20250215.csv \
+  --era5-t2m-daily data/processed/era5_t2m_daily_(47p5,8p0)_20230101_20250215.csv \
+  --output-csv data/processed/dataset_gefs_era5_(47p5,8p0)_120-144_20230106_20250206.csv
+```
+
+Notes:
+
+- If `--gefs-csv/--era5-*` are omitted, the script auto-discovers files in `data/processed/`.
+- The output filename includes the grid, lead-hour range, and min/max valid dates found in the data.
+
+## Split Dataset into Training and Testing
+
+Split the assembled dataset into train and test CSVs by `valid_datetime_start` date range. Date ranges must not overlap.
+
+- Script: `scripts/split_dataset.py`
+- Input: `data/processed/dataset_gefs_era5_(<grid>)_<lead-range>_<start>_<end>.csv`
+- Outputs (written next to the input file):
+  - `..._<trainStart>_<trainEnd>_train.csv`
+  - `..._<testStart>_<testEnd>_test.csv`
+
+Example:
+
+```bash
+/Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/split_dataset.py \
+  data/processed/dataset_gefs_era5_(47p5,8p0)_120-144_20230101_20250205.csv \
+  --train-start 2023-01-01 --train-end 2023-12-31 \
+  --test-start 2024-01-01 --test-end 2025-02-05
+```
+
+Final Outputs Summary:
+
+- Merged modeling dataset: `data/processed/dataset_gefs_era5_(<grid>)_<lead-range>_<start>_<end>.csv`
+- Train/Test splits: `..._<trainStart>_<trainEnd>_train.csv`, `..._<testStart>_<testEnd>_test.csv`

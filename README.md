@@ -2,11 +2,13 @@
 
 A proof-of-concept machine learning project for improving GEFS (Global Ensemble Forecast System) precipitation ensemble forecasts through post-processing, with a focus on extreme precipitation events for hydropower applications.
 
+The focus will be in the Laufenburg region, specifically around the Laufenburg hydropower plant on the Swiss-German border. This is part of the High Rhine sub-basin, which is a hydropower-heavy region.
+
 ## Overview
 
 This project demonstrates how to adjust GEFS ensemble precipitation forecasts to better capture tail events (extreme rainfall) using two approaches:
 
-- **CRPS-optimized Neural Network**: A deterministic neural network trained with Continuous Ranked Probability Score (CRPS) loss
+- **CRPS-optimized Gamma Neural Network**: A deterministic neural network trained with Continuous Ranked Probability Score (CRPS) loss
 - **Bayesian Neural Network**: A probabilistic approach providing uncertainty quantification
 
 The project targets a specific Rhine basin location (47.5565597°N, 8.0483°E) and compares raw GEFS performance against post-processed forecasts, emphasizing improvements in extreme precipitation prediction.
@@ -95,66 +97,4 @@ python scripts/download_era5.py --variable t2m --start-date 2025-01-01 --end-dat
 
 ### Project Structure
 
-```
-hydro_poc/
-├── notebooks/          # Jupyter notebooks for analysis and development
-├── scripts/            # Command-line scripts for data acquisition
-│   ├── download_gefs_ensemble.py
-│   └── download_era5.py
-├── src/hydro/          # Main package
-│   ├── common.py       # Shared constants and utilities
-│   ├── data/           # Data processing modules
-│   ├── models/         # ML model implementations
-│   └── utils/          # Utility functions
-├── data/               # Data storage (gitignored)
-│   ├── raw/            # Original downloads
-│   ├── processed/      # Clean datasets
-│   └── interim/        # Temporary files
-├── models/             # Saved model artifacts (gitignored)
-├── results/            # Outputs and visualizations
-│   ├── plots/
-│   ├── metrics/
-│   └── reports/
-├── docs/               # Documentation
-│   ├── project_outline.md
-│   ├── project_structure.md
-│   └── task_docs/      # Detailed task documentation
-└── tests/              # Unit tests
-```
-
-## Development Status
-
-**Current Phase**: Phase 1 (Data Acquisition) - 80% Complete
-
-- ✅ GEFS download pipeline with robust error handling
-- ✅ Incremental CSV processing with checkpointing
-- ✅ Local testing validated
-- ✅ AWS deployment script ready
-- 🔄 ERA5 data acquisition (in progress)
-- ⏳ Phases 2-6 (EDA, baseline evaluation, neural networks, comparison)
-
-See `docs/task_docs/project_progress.md` for detailed progress tracking.
-
-## Key Technical Concepts
-
-- **GEFS**: NOAA's Global Ensemble Forecast System (30 perturbed members + control + spread + mean)
-- **GRIB2**: Meteorological data format requiring selective variable extraction
-- **CRPS**: Continuous Ranked Probability Score for probabilistic forecast evaluation
-- **Ensemble Post-processing**: Statistical correction of raw ensemble forecasts
-- **Tail Calibration**: Improving predictions of extreme events (heavy precipitation)
-
-## Contributing
-
-1. Follow the established project structure
-2. Use the specified Python executable: `/Users/williamhenry/python_venvs/hydro_poc/bin/python`
-3. Update `requirements.in` for new dependencies, then run `pip-compile && pip-sync`
-4. Add tests in the `tests/` directory
-5. Update documentation in `docs/`
-
-## License
-
-This project is for educational and research purposes. Please check NOAA and Copernicus data usage policies for commercial applications.
-
-## Contact
-
-For questions about the GEFS post-processing methodology or implementation details, refer to the documentation in `docs/` or check the Jupyter notebooks for code examples.
+See `docs/project_structure.md` for the project structure.
