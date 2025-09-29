@@ -28,6 +28,8 @@ class DatasetAssembler:
     - Pivots GEFS members (control, perturbed, mean, spread) to columns
     - Joins ERA5 daily TP as truth on valid day window
     - Adds lag-1 ERA5 TP and t2m (min/mean/max) based on forecast date - 1 day
+    - Adds ensemble statistics (min/max/quantiles/skew/kurtosis) for GEFS perturbed members
+    - Adds monthly indicator columns (jan-dec) based on valid_datetime_start
     """
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
@@ -293,6 +295,51 @@ class DatasetAssembler:
         gefs_df = self._read_gefs_concat(gefs_paths)
         gefs_wide = self._pivot_gefs(gefs_df, self.logger)
 
+        # Add min/max columns for GEFS ensemble members (perturbed members only)
+        gefs_member_cols = [
+            col for col in gefs_wide.columns if col.startswith("gefs_gep")
+        ]
+        if gefs_member_cols:
+            gefs_wide["gefs_ensemble_min"] = gefs_wide[gefs_member_cols].min(
+                axis=1
+            )
+            gefs_wide["gefs_ensemble_max"] = gefs_wide[gefs_member_cols].max(
+                axis=1
+            )
+            gefs_wide["gefs_ensemble_q10"] = gefs_wide[
+                gefs_member_cols
+            ].quantile(0.1, axis=1)
+            gefs_wide["gefs_ensemble_q90"] = gefs_wide[
+                gefs_member_cols
+            ].quantile(0.9, axis=1)
+            gefs_wide["gefs_ensemble_skew"] = gefs_wide[gefs_member_cols].skew(
+                axis=1
+            )
+            gefs_wide["gefs_ensemble_kurtosis"] = gefs_wide[
+                gefs_member_cols
+            ].kurt(axis=1)
+
+        # Add monthly indicator columns based on valid_datetime_start
+        if "valid_datetime_start" in gefs_wide.columns:
+            month_names = [
+                "jan",
+                "feb",
+                "mar",
+                "apr",
+                "may",
+                "jun",
+                "jul",
+                "aug",
+                "sep",
+                "oct",
+                "nov",
+                "dec",
+            ]
+            for i, month_name in enumerate(month_names, 1):
+                gefs_wide[month_name] = (
+                    gefs_wide["valid_datetime_start"].dt.month == i
+                ).astype(int)
+
         tp_df = self._read_era5_tp_daily(era5_tp_daily_csv, self.logger)
         t2m_df = self._read_era5_t2m_daily(era5_t2m_daily_csv, self.logger)
 
@@ -378,17 +425,6 @@ class DatasetAssembler:
             "valid_datetime_end",
             "lead_hours_range",
         ]
-        # Only include true GEFS member columns in this group; exclude derived extras
-        exclude_gefs_derived = {
-            "gefs_geavg_on_forecast_date",
-            "gefs_geavg_on_forecast_date_error",
-            "gefs_geavg_error",
-        }
-        gefs_cols = [
-            c
-            for c in merged.columns
-            if c.startswith("gefs_") and c not in exclude_gefs_derived
-        ]
         extra_cols = [
             "era5_tp",
             "gefs_geavg_error",
@@ -400,6 +436,29 @@ class DatasetAssembler:
             "era5_t2m_min_lag1",
             "era5_t2m_mean_lag1",
             "era5_t2m_max_lag1",
+            "gefs_ensemble_min",
+            "gefs_ensemble_max",
+            "gefs_ensemble_q10",
+            "gefs_ensemble_q90",
+            "gefs_ensemble_skew",
+            "gefs_ensemble_kurtosis",
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "may",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "oct",
+            "nov",
+            "dec",
+        ]
+        gefs_cols = [
+            c
+            for c in merged.columns
+            if c.startswith("gefs_") and c not in extra_cols
         ]
         ordered_cols = base_cols + sorted(gefs_cols) + extra_cols
         # Deduplicate while preserving order
