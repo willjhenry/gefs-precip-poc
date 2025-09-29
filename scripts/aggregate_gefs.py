@@ -2,7 +2,7 @@
 Aggregate GEFS total precipitation (tp) for specified lead hours by forecast date and member.
 
 This script uses the GefsAggregator class to read the per-hour tp extraction CSV produced by
-`scripts/download_gefs_ensemble.py` and compute sums across the specified lead hours
+`scripts/download_gefs.py` and compute sums across the specified lead hours
 (e.g., 120–168, 3-hourly steps) for each `(forecast_date, ensemble_member)` pair.
 
 The output CSV includes one row per `(forecast_date, member)` with:
@@ -16,10 +16,10 @@ The output CSV includes one row per `(forecast_date, member)` with:
 Examples
 --------
 Run with defaults (120-168 hours, input from data/processed/gefs_ensemble_tp.csv):
-    python scripts/aggregate_gefs_tp_120_168.py
+    python scripts/aggregate_gefs.py
 
 Specify input and custom hours:
-    python scripts/aggregate_gefs_tp_120_168.py \
+    python scripts/aggregate_gefs.py \
         --input-csv data/processed/gefs_ensemble_tp.csv \
         --start-hour 120 --end-hour 168 --step 3 \
         --output-csv data/processed/gefs_ensemble_tp_120_168.csv
