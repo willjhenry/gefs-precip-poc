@@ -58,4 +58,9 @@ See the docs/data_processing_guide.md file for the data processing guide.
 ## TODOs
 
 - Implement the Bayesian Neural Network
-- Clean up and streamline data getting and processing code
+- Clean up and streamline data getting and processing code. AI helped and there
+  are pros and cons. A lot of cleanup and refactor has been done, but more is
+  needed. File structure is a and could be improved. Output file names could be
+  more meaningful and clear.
+- Create workflow for live forecasts (getting GEFS, processing to inputs)
+- Deploy on AWS, for fun maybe.
