@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional, Tuple
 
 import pandas as pd
 
-from hydro.common import build_gefs_basename
+from hydro.common import build_gefs_basename, build_gefs_processed_dir
 
 
 class GefsAggregator:
@@ -252,18 +252,22 @@ class GefsAggregator:
         df = self.read_input()
         agg_df = self.aggregate_tp(df, lead_hours)
 
-        # Parse metadata from input filename
-        location, lead_start, lead_end, cycle = self._parse_input_metadata()
+        # Parse metadata from input filename (use only location and cycle)
+        location, _lead_start, _lead_end, cycle = self._parse_input_metadata()
 
-        # Build output directory (same as input)
-        out_dir = os.path.dirname(self.input_csv)
+        # Build output directory based on CLI-provided lead window
+        out_dir = build_gefs_processed_dir(
+            location=location,
+            lead_start=self.start_hour,
+            lead_end=self.end_hour,
+        )
 
-        # Build sum basename
+        # Build sum basename using CLI lead window
         sum_basename = build_gefs_basename(
             kind="sum",
             location=location,
-            lead_start=lead_start,
-            lead_end=lead_end,
+            lead_start=self.start_hour,
+            lead_end=self.end_hour,
             cycle=cycle,
         )
 
