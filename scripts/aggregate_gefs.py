@@ -15,16 +15,13 @@ The output CSV includes one row per `(forecast_date, member)` with:
 
 Examples
 --------
-Run with defaults (auto-detect input/output from new structured directories):
-    python scripts/aggregate_gefs.py
-
 Specify input explicitly:
     python scripts/aggregate_gefs.py \
-        --input-csv data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250215.csv
+        data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250215.csv
 
 Specify custom output path:
     python scripts/aggregate_gefs.py \
-        --input-csv input.csv \
+        input.csv \
         --output-csv custom_output.csv
 """
 
@@ -97,7 +94,6 @@ def parse_args(processed_dir: str) -> argparse.Namespace:
     parser.add_argument(
         "input_csv",
         type=str,
-        default=os.path.join(processed_dir, "gefs_ensemble_tp.csv"),
         help="Path to input CSV from download_gefs_ensemble.py",
     )
     parser.add_argument(

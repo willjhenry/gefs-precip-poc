@@ -7,8 +7,8 @@ Processes 30 perturbed members + control + spread + mean for 5-7 day forecasts.
 Sequential processing with resume capability and memory-efficient operation.
 
 Usage:
-    python download_gefs_ensemble.py --start-date 2024-01-01 --end-date 2024-01-31
-    python download_gefs_ensemble.py --resume  # Resume from checkpoint
+    python download_gefs.py --start-date 2024-01-01 --end-date 2024-01-31
+    python download_gefs.py --resume  # Resume from checkpoint
 
 Notes:
     - GRIB files are downloaded to `data/interim/gefs/` (temporary working files)
