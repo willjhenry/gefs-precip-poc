@@ -14,7 +14,7 @@ from typing import Optional
 import pandas as pd
 import xarray as xr
 
-from hydro.common import grid_point_string
+from hydro.common import build_era5_basename, grid_point_string
 
 logger = logging.getLogger(__name__)
 
@@ -175,12 +175,22 @@ class NetCDFDataExtractor:
         """
         df = self.extract_to_dataframe(file_path)
 
-        # Infer date range from file name or data
+        # Infer date range from data (valid_time min/max)
         date_range = self._infer_date_range(file_path, df)
-        base_name = os.path.basename(file_path).replace(".nc", "")
-        if prefix:
-            base_name = f"{prefix}{base_name}"
-        output_filename = f"{base_name}_{self.grid_str}_{date_range}.csv"
+
+        # Validate variable
+        if self.variable not in ["tp", "t2m"]:
+            raise ValueError(
+                f"Unsupported variable: {self.variable}. Only 'tp' and 't2m' are supported."
+            )
+
+        # Use standardized basename
+        base = build_era5_basename(
+            variable=self.variable,
+            frequency="hourly",
+            location=(self.lat, self.lon),
+        )
+        output_filename = f"{base}_{date_range}.csv"
         output_path = os.path.join(output_dir, output_filename)
 
         # Ensure dir exists
@@ -194,18 +204,20 @@ class NetCDFDataExtractor:
     @staticmethod
     def _infer_date_range(file_path: str, df: pd.DataFrame) -> str:
         """Infer YYYYMMDD_YYYYMMDD from filename or data."""
+        # Fallback to data min/max (prioritize valid_time)
+        if not df.empty and "valid_time" in df.columns:
+            start = df["valid_time"].min()
+            end = df["valid_time"].max()
+            return f"{pd.to_datetime(start).strftime('%Y%m%d')}_{pd.to_datetime(end).strftime('%Y%m%d')}"
+
         # Try to parse from filename (e.g., era5_tp_20230101_20231201.nc)
         base = os.path.basename(file_path)
         if "_20" in base and "_" in base.split("_20")[-1]:
             dates = base.split("_")[-2:]  # Last two parts
             if len(dates) == 2 and all(len(d) == 8 for d in dates):
                 return f"{dates[0]}_{dates[1]}"
-        # Fallback to data min/max
-        if not df.empty:
-            start = df["valid_time"].min()
-            end = df["valid_time"].max()
-            return f"{pd.to_datetime(start).strftime('%Y%m%d')}_{pd.to_datetime(end).strftime('%Y%m%d')}"
-        return "unknown"
+
+        return "unknown-unknown"
 
     @staticmethod
     def _resolve_coord_names(ds: xr.Dataset) -> tuple[str, str]:

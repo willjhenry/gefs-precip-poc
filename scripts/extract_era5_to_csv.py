@@ -1,24 +1,23 @@
 """
-Extract ERA5 NetCDF files to CSVs at Rhine grid point (47.5N, 8.0E).
+Extract a single ERA5 NetCDF file to a CSV at a grid point.
 
-Scans data/raw/era5/ for .nc files, uses NetCDFDataExtractor to pull time series,
-and saves per-file CSVs to data/processed/ with grid point in filename.
+Given an input `.nc` file, this script uses NetCDFDataExtractor to pull the
+time series at a target lat/lon and writes a CSV into the structured
+processed directory: data/processed/era5/<grid>/<variable>/hourly/.
 """
 
 from __future__ import annotations
 
 import argparse
-import glob
 import logging
 import os
+import re
 import sys
-from typing import List
+from typing import Literal
 
 from hydro.common import (
-    GRID_RHINE_POINT,
-    PROCESSED_DIR,
-    RAW_ERA5_DIR,
     SCRIPTS_DIR,
+    build_era5_processed_dir,
 )
 from hydro.data_processors.netcdf_extractor import NetCDFDataExtractor
 
@@ -26,99 +25,87 @@ from hydro.data_processors.netcdf_extractor import NetCDFDataExtractor
 LOG_FILE = os.path.join(SCRIPTS_DIR, "era5_extract.log")
 
 
-def setup_logging(log_file: str) -> logging.Logger:
-    """Configure logger for file and console."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
-    return logging.getLogger(__name__)
+"""Configure logger for file and console."""
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 
-def find_era5_files(raw_dir: str) -> List[str]:
-    """Find all .nc files in raw_dir."""
-    pattern = os.path.join(raw_dir, "era5_*.nc")
-    files = glob.glob(pattern)
-    if not files:
-        raise FileNotFoundError(f"No ERA5 .nc files found in {raw_dir}")
-    return sorted(files)
+def determine_variable(base: str) -> Literal["tp", "t2m"]:
+    if "_tp_" in base:
+        var = "tp"
+    elif "_t2m_" in base:
+        var = "t2m"
+    else:
+        raise ValueError(
+            "Could not infer variable from filename. Provide --variable (tp or t2m)."
+        )
+    return var
 
 
-def main() -> None:
-    """CLI entry point."""
+def determine_location(base: str) -> tuple[float, float]:
+    m = re.search(r"lat-([0-9p-]+)_lon-([0-9p-]+)", base)
+    if m:
+        lat_str, lon_str = m.groups()
+        lat = float(lat_str.replace("p", "."))
+        lon = float(lon_str.replace("p", "."))
+    else:
+        raise ValueError(
+            "Could not infer location from filename. Provide --lat and --lon."
+        )
+    return lat, lon
+
+
+def parse_args() -> tuple[str, Literal["tp", "t2m"], float, float]:
     parser = argparse.ArgumentParser(
-        description="Extract ERA5 NetCDFs to CSVs at grid point (47.5N, 8.0E)",
+        description="Extract a single ERA5 NetCDF to CSV at a grid point",
     )
     parser.add_argument(
-        "--raw-dir",
-        default=RAW_ERA5_DIR,
-        help="Directory containing ERA5 .nc files",
-    )
-    parser.add_argument(
-        "--processed-dir",
-        default=PROCESSED_DIR,
-        help="Output directory for CSVs",
-    )
-    parser.add_argument(
-        "--variables",
-        nargs="+",
-        default=["tp", "t2m"],
-        help="Variables to extract (e.g., tp t2m)",
-    )
-    parser.add_argument(
-        "--lat",
-        type=float,
-        default=GRID_RHINE_POINT[0],
-        help="Latitude for extraction",
-    )
-    parser.add_argument(
-        "--lon",
-        type=float,
-        default=GRID_RHINE_POINT[1],
-        help="Longitude for extraction",
+        "input_nc",
+        required=True,
+        help="Path to ERA5 NetCDF (.nc) file",
     )
     args = parser.parse_args()
 
-    logger = setup_logging(LOG_FILE)
-    os.makedirs(args.processed_dir, exist_ok=True)
+    input_nc = args.input_nc
+    if not os.path.isfile(input_nc):
+        raise FileNotFoundError(f"Input NetCDF not found: {input_nc}")
 
-    # Process each variable separately
-    for var in args.variables:
-        logger.info(
-            f"Processing variable '{var}' at lat={args.lat}, lon={args.lon}"
+    base = os.path.basename(input_nc)
+    var = determine_variable(base)
+    lat, lon = determine_location(base)
+    return input_nc, var, lat, lon
+
+
+def main() -> None:
+    input_nc, var, lat, lon = parse_args()
+    logger.info(f"Processing {input_nc} | var={var} | lat={lat} lon={lon}")
+
+    # Compute structured output directory
+    output_dir = build_era5_processed_dir((lat, lon), var, "hourly")
+    os.makedirs(output_dir, exist_ok=True)
+    logger.info(f"Output directory: {output_dir}")
+
+    extractor = NetCDFDataExtractor(
+        lat=lat,
+        lon=lon,
+        variable=var,
+    )
+
+    try:
+        output_csv = extractor.extract_to_csv(
+            file_path=input_nc,
+            output_dir=output_dir,
         )
-        extractor = NetCDFDataExtractor(
-            lat=args.lat,
-            lon=args.lon,
-            variable=var,
-        )
-
-        files = find_era5_files(args.raw_dir)
-        logger.info(f"Found {len(files)} .nc files for {var}")
-
-        for file_path in files:
-            # Infer if file matches variable (e.g., era5_tp_*.nc)
-            base = os.path.basename(file_path)
-            if var not in base:
-                logger.warning(
-                    f"Skipping {base} (doesn't match variable '{var}')"
-                )
-                continue
-
-            try:
-                output_csv = extractor.extract_to_csv(
-                    file_path=file_path,
-                    output_dir=args.processed_dir,
-                )
-                logger.info(f"Completed: {output_csv}")
-            except Exception as e:
-                logger.error(f"Failed to process {file_path}: {e}")
-
-    logger.info("Extraction complete. Check data/processed/ for CSVs.")
+        logger.info(f"Completed: {output_csv}")
+    except Exception as e:
+        logger.error(f"Failed to process {input_nc}: {e}")
 
 
 if __name__ == "__main__":
