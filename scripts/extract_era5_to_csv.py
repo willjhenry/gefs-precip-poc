@@ -68,7 +68,6 @@ def parse_args() -> tuple[str, Literal["tp", "t2m"], float, float]:
     )
     parser.add_argument(
         "input_nc",
-        required=True,
         help="Path to ERA5 NetCDF (.nc) file",
     )
     args = parser.parse_args()
