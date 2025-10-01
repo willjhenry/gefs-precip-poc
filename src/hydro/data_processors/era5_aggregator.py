@@ -4,11 +4,15 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 import pandas as pd
 
-from hydro.common import PROCESSED_DIR
+from hydro.common import (
+    PROCESSED_DIR,
+    build_era5_basename,
+    build_era5_processed_dir,
+)
 
 
 @dataclass
@@ -25,8 +29,7 @@ class Era5DailyAggregationResult:
 class Era5DailyAggregator:
     """Aggregate hourly ERA5 CSVs to daily statistics.
 
-    - For variable "tp": daily sum, converted from meters (m) to millimeters (mm)
-      by multiplying by 1000 to align with GEFS (kg m^-2 ≡ mm)
+    - For variable "tp": daily sum (assumes input is already in mm)
     - For variable "t2m": daily min, mean, max
 
     Methods return the path to the aggregated CSV written to PROCESSED_DIR.
@@ -55,13 +58,14 @@ class Era5DailyAggregator:
         if not os.path.exists(input_csv):
             raise FileNotFoundError(f"Input CSV not found: {input_csv}")
 
-        variable = self._infer_variable_from_filename(
-            os.path.basename(input_csv)
-        )
+        base_filename = os.path.basename(input_csv)
+        variable = self._infer_variable_from_filename(base_filename)
         if variable not in {"tp", "t2m"}:
             raise ValueError(
                 f"Unsupported variable inferred from filename: '{variable}'. Expected 'tp' or 't2m'."
             )
+        # Parse location from filename
+        lat, lon = self._parse_location_from_filename(base_filename)
 
         df = pd.read_csv(input_csv)
         if "valid_time" not in df.columns or "value" not in df.columns:
@@ -87,8 +91,6 @@ class Era5DailyAggregator:
                 base_df.groupby("day")["value"].sum(min_count=1).reset_index()
             )
             daily = daily.rename(columns={"value": "tp"})
-            # Convert from meters to millimeters to match GEFS units (mm)
-            daily["tp"] = pd.to_numeric(daily["tp"], errors="coerce") * 1000.0
         else:  # t2m
             agg_df = (
                 base_df.groupby("day")["value"]
@@ -103,8 +105,10 @@ class Era5DailyAggregator:
                 }
             )
 
-        daily["valid_datetime_start"] = daily["day"]
-        daily["valid_datetime_end"] = daily["day"] + pd.Timedelta(days=1)
+        daily["valid_datetime_start"] = pd.to_datetime(daily["day"])
+        daily["valid_datetime_end"] = pd.to_datetime(
+            daily["day"]
+        ) + pd.Timedelta(days=1)
 
         # Reorder columns
         if variable == "tp":
@@ -123,21 +127,28 @@ class Era5DailyAggregator:
             ]
         out_df = daily[output_cols].sort_values("valid_datetime_start")
 
-        # Build output path
-        date_start = out_df["valid_datetime_start"].min()
-        date_end = out_df["valid_datetime_end"].max() - pd.Timedelta(seconds=1)
-        date_range_str = (
-            f"{date_start.strftime('%Y%m%d')}_{date_end.strftime('%Y%m%d')}"
-        )
+        # Build output path using standardized helpers
+        processed_dir = build_era5_processed_dir((lat, lon), variable, "daily")
+        os.makedirs(processed_dir, exist_ok=True)
 
-        grid_suffix = self._extract_grid_suffix(os.path.basename(input_csv))
-        var_tag = f"era5_{variable}_daily"
-        filename_parts: List[str] = [var_tag]
-        if grid_suffix:
-            filename_parts.append(grid_suffix)
-        filename_parts.append(date_range_str)
-        out_filename = "_".join(filename_parts) + ".csv"
-        output_path = os.path.join(self.processed_dir, out_filename)
+        base = build_era5_basename(variable, "daily", (lat, lon))
+
+        # Compute start/end once; reuse for filename and metadata
+        start_dt = out_df["valid_datetime_start"].min()
+        end_dt = out_df["valid_datetime_end"].max()
+        date_range_str = f"{start_dt.strftime('%Y%m%d')}-{(end_dt - pd.Timedelta(seconds=1)).strftime('%Y%m%d')}"
+
+        out_filename = f"{base}_{date_range_str}.csv"
+        output_path = os.path.join(processed_dir, out_filename)
+
+        # convert valid_datetime_start and valid_datetime_end to strings of
+        # format YYYY-MM-DD HH:MM:SS
+        out_df["valid_datetime_start"] = out_df[
+            "valid_datetime_start"
+        ].dt.strftime("%Y-%m-%d %H:%M:%S")
+        out_df["valid_datetime_end"] = out_df[
+            "valid_datetime_end"
+        ].dt.strftime("%Y-%m-%d %H:%M:%S")
 
         out_df.to_csv(output_path, index=False)
         self.logger.info(
@@ -148,8 +159,8 @@ class Era5DailyAggregator:
             output_path=output_path,
             variable=variable,
             num_days=len(out_df),
-            start_datetime=out_df["valid_datetime_start"].min(),
-            end_datetime=out_df["valid_datetime_end"].max(),
+            start_datetime=start_dt,  # type: ignore
+            end_datetime=end_dt,  # type: ignore
         )
 
     @staticmethod
@@ -192,3 +203,30 @@ class Era5DailyAggregator:
         """
         m = re.search(r"(\(-?\d+p\d,\-?\d+p\d\))", filename)
         return m.group(1) if m else ""
+
+    @staticmethod
+    def _parse_location_from_filename(filename: str) -> tuple[float, float]:
+        """Parse lat/lon from filename using lat-..._lon-... pattern.
+
+        Parameters
+        ----------
+        filename
+            Basename of the file.
+
+        Returns
+        -------
+        tuple[float, float]
+            (lat, lon) parsed from filename.
+
+        Raises
+        ------
+        ValueError
+            If lat/lon cannot be parsed.
+        """
+        m = re.search(r"lat-([0-9p-]+)_lon-([0-9p-]+)", filename)
+        if m:
+            lat_str, lon_str = m.groups()
+            lat = float(lat_str.replace("p", "."))
+            lon = float(lon_str.replace("p", "."))
+            return lat, lon
+        raise ValueError(f"Could not parse lat/lon from filename: {filename}")

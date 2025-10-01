@@ -222,4 +222,7 @@ def build_era5_basename(
     lat, lon = location
     if frequency == "hourly":
         return f"era5_{variable}_freq-1h_{grid_tags(lat, lon)}"
-    return f"era5_{variable}_daily_{grid_tags(lat, lon)}"
+    elif frequency == "daily":
+        return f"era5_{variable}_freq-1d_{grid_tags(lat, lon)}"
+    else:
+        raise ValueError(f"Invalid frequency: {frequency}")

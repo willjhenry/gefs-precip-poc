@@ -26,7 +26,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Aggregate hourly ERA5 CSVs to daily outputs.\n"
-            "- tp: sum per day\n- t2m: min/mean/max per day"
+            "- tp: sum per day\n- t2m: min/mean/max per day\n\n"
+            "Outputs are written under data/processed/era5/<grid>/<variable>/daily/\n"
+            "with filenames era5_<var>_daily_<grid>_YYYYMMDD-YYYYMMDD.csv"
         )
     )
     parser.add_argument(

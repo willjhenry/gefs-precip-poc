@@ -140,6 +140,12 @@ class NetCDFDataExtractor:
             columns_dict = {time_col: "valid_time", self.variable: "value"}
             df = df_full.rename(columns=columns_dict)
 
+            # Convert tp from meters to millimeters to match GEFS units (mm)
+            if self.variable == "tp":
+                df["value"] = (
+                    pd.to_numeric(df["value"], errors="coerce") * 1000.0  # type: ignore
+                )
+
             self.logger.info(
                 f"Extracted {len(df)} time steps for {self.variable}."
             )
