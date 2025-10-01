@@ -75,7 +75,7 @@ Patterns with placeholders:
 - GEFS per-hour: `gefs_tp_freq-3h_lat-<lat>_lon-<lon>_lead-<start>-<end>_cycle-<cycle>_YYYYMMDD-YYYYMMDD.csv`
 - GEFS sum: `gefs_tp_sum_lat-<lat>_lon-<lon>_lead-<start>-<end>_cycle-<cycle>_YYYYMMDD-YYYYMMDD.csv`
 - ERA5 hourly: `era5_<var>_freq-1h_lat-<lat>_lon-<lon>_YYYYMMDD-YYYYMMDD.csv`
-- ERA5 daily: `era5_<var>_daily_lat-<lat>_lon-<lon>_YYYYMMDD-YYYYMMDD.csv`
+- ERA5 daily: `era5_<var>_freq-1d_lat-<lat>_lon-<lon>_YYYYMMDD-YYYYMMDD.csv`
 
 ---
 
@@ -280,8 +280,7 @@ Edit `src/hydro/data_processors/dataset_assembler.py` to discover new paths firs
 - Fallback (old):
   - `glob(os.path.join(PROCESSED_DIR, "gefs_ensemble_tp*.csv"))`
 - ERA5 daily (new):
-  - `glob(os.path.join(PROCESSED_DIR, "era5", "**", "era5_tp_daily_*.csv"), recursive=True)`
-  - `glob(os.path.join(PROCESSED_DIR, "era5", "**", "era5_t2m_daily_*.csv"), recursive=True)`
+  - `glob(os.path.join(PROCESSED_DIR, "era5", "**", "era5_*_freq-1d_*.csv"), recursive=True)`
 - Fallback (old):
   - `glob(os.path.join(PROCESSED_DIR, "era5_tp_daily_*.csv"))`
   - `glob(os.path.join(PROCESSED_DIR, "era5_t2m_daily_*.csv"))`
@@ -345,7 +344,7 @@ Keep the existing sorting (mtime) and validation.
 data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250215.csv
 data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_sum_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250215.csv
 data/processed/era5/lat-47p5_lon-8p0/tp/hourly/era5_tp_freq-1h_lat-47p5_lon-8p0_20230101-20250215.csv
-data/processed/era5/lat-47p5_lon-8p0/tp/daily/era5_tp_daily_lat-47p5_lon-8p0_20230101-20250215.csv
+data/processed/era5/lat-47p5_lon-8p0/tp/daily/era5_tp_freq-1d_lat-47p5_lon-8p0_20230101-20250215.csv
 data/processed/era5/lat-47p5_lon-8p0/t2m/hourly/era5_t2m_freq-1h_lat-47p5_lon-8p0_20230101-20250215.csv
-data/processed/era5/lat-47p5_lon-8p0/t2m/daily/era5_t2m_daily_lat-47p5_lon-8p0_20230101-20250215.csv
+data/processed/era5/lat-47p5_lon-8p0/t2m/daily/era5_t2m_freq-1d_lat-47p5_lon-8p0_20230101-20250215.csv
 ```
