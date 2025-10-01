@@ -220,6 +220,44 @@ Edit `scripts/extract_era5_to_csv.py`:
 
 Keep date range inferred from data/file (`valid_time` min/max).
 
+#### 4b) ERA5 downloader and raw naming (standardize raw NetCDF paths)
+
+Update `scripts/download_era5.py` and `src/hydro/data_processors/era5_downloader.py` so raw NetCDF files follow a structured directory and filename convention aligned with processed outputs.
+
+- Raw directory (by grid and variable):
+
+  - `data/raw/era5/lat-<lat>_lon-<lon>/<variable>/`
+  - Examples:
+    - `data/raw/era5/lat-47p5_lon-8p0/tp/`
+    - `data/raw/era5/lat-47p5_lon-8p0/t2m/`
+
+- Raw NetCDF filename pattern:
+
+  - `era5_<var>_lat-<lat>_lon-<lon>_YYYYMMDD-YYYYMMDD.nc`
+  - Examples:
+    - `era5_tp_lat-47p5_lon-8p0_20250101-20250131.nc`
+    - `era5_t2m_lat-47p5_lon-8p0_20250101-20250131.nc`
+
+- Code changes:
+  - `src/hydro/data_processors/era5_downloader.py`:
+    - Import and use `grid_tags(lat, lon)` from `hydro.common`.
+    - Update `build_output_path(variable, start_date, end_date)` to:
+      - Build `out_dir = os.path.join(RAW_ERA5_DIR, grid_tags(*location), variable)`
+      - Ensure directory exists.
+      - Build filename with date range using hyphen: `YYYYMMDD-YYYYMMDD`.
+      - Return `.nc` final path (the downloader should replace ZIP with `.nc` after extraction if needed).
+  - `scripts/download_era5.py`:
+    - Add optional `--lat` and `--lon` flags (defaults to `GRID_RHINE_POINT`).
+    - Pass `(args.lat, args.lon)` to `Era5Downloader`.
+    - Log the final raw output path.
+  - `scripts/extract_era5_to_csv.py` (compat):
+    - If you choose to nest raw files in subdirectories, update `find_era5_files()` to support recursive search when `--raw-dir` is the root, e.g., `glob(os.path.join(raw_dir, "**", f"era5_{var}_*.nc"), recursive=True)`.
+
+Notes:
+
+- This step keeps raw and processed naming parallel, easing multi-location workflows and preventing filename collisions.
+- If you prefer to avoid recursive search, pass the var-specific grid directory via `--raw-dir`.
+
 #### 5) ERA5 daily aggregator
 
 Edit `src/hydro/data_processors/era5_aggregator.py`:
@@ -280,6 +318,10 @@ Keep the existing sorting (mtime) and validation.
 - ERA5 hourly extraction (`scripts/extract_era5_to_csv.py` + `NetCDFDataExtractor`):
   - Use new `era5/<grid>/<var>/hourly` directory.
   - Output filenames via `build_era5_basename(..., "hourly", ...)`.
+- ERA5 downloader and raw naming (`scripts/download_era5.py` + `src/hydro/data_processors/era5_downloader.py`):
+  - Write raw NetCDFs to `raw/era5/<grid>/<var>/` with standardized filenames.
+  - Add `--lat/--lon` flags to the download script and log final paths.
+  - Optionally make extractor's raw search recursive to support nested dirs.
 - ERA5 daily aggregator (`src/hydro/data_processors/era5_aggregator.py`):
   - Use new `era5/<grid>/<var>/daily` directory.
   - Output filenames via `build_era5_basename(..., "daily", ...)`.

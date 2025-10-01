@@ -52,16 +52,29 @@ def main():
     parser.add_argument(
         "--end-date", required=True, help="End date (YYYY-MM-DD)"
     )
+    parser.add_argument(
+        "--lat",
+        type=float,
+        default=GRID_RHINE_POINT[0],
+        help="Latitude for download (default: GRID_RHINE_POINT)",
+    )
+    parser.add_argument(
+        "--lon",
+        type=float,
+        default=GRID_RHINE_POINT[1],
+        help="Longitude for download (default: GRID_RHINE_POINT)",
+    )
 
     args = parser.parse_args()
 
     logger.info("Starting ERA5 data download")
     logger.info(f"Variable: {args.variable}")
     logger.info(f"Date range: {args.start_date} to {args.end_date}")
+    logger.info(f"Location: lat={args.lat}, lon={args.lon}")
 
     try:
         downloader = Era5Downloader(
-            location=GRID_RHINE_POINT,
+            location=(args.lat, args.lon),
             logger=logger,
         )
         downloaded_file = downloader.download(
