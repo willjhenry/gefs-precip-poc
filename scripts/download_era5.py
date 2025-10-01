@@ -36,7 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Download ERA5 reanalysis data"
     )
@@ -65,8 +65,11 @@ def main():
         help="Longitude for download (default: GRID_RHINE_POINT)",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main():
+    args = parse_args()
     logger.info("Starting ERA5 data download")
     logger.info(f"Variable: {args.variable}")
     logger.info(f"Date range: {args.start_date} to {args.end_date}")
