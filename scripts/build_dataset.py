@@ -76,7 +76,7 @@ def main() -> None:
             output_csv=args.output_csv,
         )
         logger.info(
-            f"Merged dataset written to {result.output_path} (rows={result.num_rows}, gefs_cols={result.num_gefs_columns})"
+            f"Merged dataset written to {result.output_path} (rows={result.num_rows}, cols={result.num_columns})"
         )
     except Exception as e:
         logger.exception(f"Dataset build failed: {e}")
