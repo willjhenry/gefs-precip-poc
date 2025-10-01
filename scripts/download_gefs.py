@@ -7,12 +7,13 @@ Processes 30 perturbed members + control + spread + mean for 5-7 day forecasts.
 Sequential processing with resume capability and memory-efficient operation.
 
 Usage:
-    python download_gefs_ensemble.py --start-date 2024-01-01 --end-date 2024-01-31
-    python download_gefs_ensemble.py --resume  # Resume from checkpoint
+    python download_gefs.py --start-date 2024-01-01 --end-date 2024-01-31
+    python download_gefs.py --start-date 2024-01-01 --end-date 2024-01-31 --start-hour 120 --end-hour 168
+    python download_gefs.py --resume  # Resume from checkpoint
 
 Notes:
     - GRIB files are downloaded to `data/interim/gefs/` (temporary working files)
-    - Extracted CSV is saved to `data/processed/gefs_ensemble_tp.csv`
+    - Extracted CSV is saved to structured directory: `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/`
     - Log and checkpoint files are stored in the `scripts/` directory
 """
 
@@ -50,6 +51,18 @@ def parse_args():
         "--end-date", required=True, help="End date (YYYY-MM-DD)"
     )
     parser.add_argument(
+        "--start-hour",
+        type=int,
+        default=120,
+        help="Start forecast hour (default: 120)",
+    )
+    parser.add_argument(
+        "--end-hour",
+        type=int,
+        default=168,
+        help="End forecast hour (default: 168)",
+    )
+    parser.add_argument(
         "--resume", action="store_true", help="Resume from checkpoint"
     )
     parser.add_argument(
@@ -64,10 +77,14 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # Generate forecast hours list from start to end hour (3-hour intervals)
+    forecast_hours = list(range(args.start_hour, args.end_hour + 1, 3))
+
     gefs_downloader = GEFSDownloader(
         location=GRID_RHINE_POINT,
         start_date=args.start_date,
         end_date=args.end_date,
+        forecast_hours=forecast_hours,
         test=args.test,
         logger=logger,
     )

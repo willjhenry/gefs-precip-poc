@@ -12,7 +12,7 @@ Usage:
 
 Notes:
     - GRIB files are downloaded to `data/interim/gefs/` (temporary working files)
-    - Extracted CSV is saved to `data/processed/gefs_ensemble_tp.csv`
+    - Extracted CSV is saved to structured directory: `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/`
     - Log and checkpoint files are stored in the `scripts/` directory
 """
 
@@ -32,6 +32,9 @@ from hydro.common import (
     INTERIM_GEFS_DIR,
     PROCESSED_DIR,
     SCRIPTS_DIR,
+    build_gefs_basename,
+    build_gefs_processed_dir,
+    finalize_csv_with_date_range,
     grid_point_string,
 )
 
@@ -79,12 +82,25 @@ class GEFSDownloader:
         self.interim_gefs_dir = INTERIM_GEFS_DIR
         self.processed_dir = PROCESSED_DIR
 
-        # Create standardized grid point string like '(47p5,8p0)'
-        location_str = grid_point_string(self.location[0], self.location[1])
-        self.output_file = os.path.join(
-            self.processed_dir,
-            f"gefs_ensemble_tp_{location_str}.csv",
+        # Compute lead time bounds
+        self.lead_start = min(self.forecast_hours)
+        self.lead_end = max(self.forecast_hours)
+
+        # Build new directory structure and filename
+        gefs_dir = build_gefs_processed_dir(
+            self.location, self.lead_start, self.lead_end
         )
+        basename = build_gefs_basename(
+            kind="freq-3h",
+            location=self.location,
+            lead_start=self.lead_start,
+            lead_end=self.lead_end,
+            cycle=self.cycle,
+        )
+        self.output_file = os.path.join(gefs_dir, f"{basename}.csv")
+
+        # Create standardized grid point string like '(47p5,8p0)' for checkpoint
+        location_str = grid_point_string(self.location[0], self.location[1])
         self.checkpoint_file = os.path.join(
             SCRIPTS_DIR,
             f"gefs_checkpoint_{location_str}.json",
@@ -96,10 +112,10 @@ class GEFSDownloader:
 
         if self.test:
             self.logger.info(
-                "TEST MODE: Processing 1 date with limited members"
+                "TEST MODE: Processing up to 2 dates with limited members"
             )
             self.ensemble_members = self.TEST_ENSEMBLE_MEMBERS
-            self.dates = self.dates[:1]
+            self.dates = self.dates[:2]
 
     def _set_dates(self) -> None:
         """Generate list of dates between start and end (inclusive)."""
@@ -129,6 +145,10 @@ class GEFSDownloader:
         # Ensure interim gefs dir and processed dir exist
         os.makedirs(self.interim_gefs_dir, exist_ok=True)
         os.makedirs(self.processed_dir, exist_ok=True)
+
+        # Ensure the specific GEFS output directory exists
+        gefs_dir = os.path.dirname(self.output_file)
+        os.makedirs(gefs_dir, exist_ok=True)
 
         # Check if output file exists, backup if it does
         if os.path.exists(self.output_file):
@@ -179,6 +199,12 @@ class GEFSDownloader:
         if os.path.exists(self.checkpoint_file):
             os.remove(self.checkpoint_file)
             self.logger.info("Removed checkpoint file")
+
+        # Finalize CSV with date range
+        self.output_file = finalize_csv_with_date_range(
+            self.output_file, date_col="valid_time"
+        )
+        self.logger.info(f"Finalized output file: {self.output_file}")
 
     def _process_date_member_hour(
         self, date: str, member: str, hour: int

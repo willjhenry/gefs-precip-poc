@@ -15,14 +15,17 @@ The output CSV includes one row per `(forecast_date, member)` with:
 
 Examples
 --------
-Run with defaults (120-168 hours, input from data/processed/gefs_ensemble_tp.csv):
+Run with defaults (auto-detect input/output from new structured directories):
     python scripts/aggregate_gefs.py
 
-Specify input and custom hours:
+Specify input explicitly:
     python scripts/aggregate_gefs.py \
-        --input-csv data/processed/gefs_ensemble_tp.csv \
-        --start-hour 120 --end-hour 168 --step 3 \
-        --output-csv data/processed/gefs_ensemble_tp_120_168.csv
+        --input-csv data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250215.csv
+
+Specify custom output path:
+    python scripts/aggregate_gefs.py \
+        --input-csv input.csv \
+        --output-csv custom_output.csv
 """
 
 from __future__ import annotations
@@ -92,7 +95,7 @@ def parse_args(processed_dir: str) -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--input-csv",
+        "input_csv",
         type=str,
         default=os.path.join(processed_dir, "gefs_ensemble_tp.csv"),
         help="Path to input CSV from download_gefs_ensemble.py",
@@ -132,27 +135,20 @@ def main() -> None:
 
     args = parse_args(processed_dir)
 
-    # Compute default output if not provided
-    if args.output_csv is None:
-        # base it off of the input csv
-        args.output_csv = os.path.join(
-            processed_dir,
-            f"{os.path.basename(args.input_csv).split('.')[0]}_{args.start_hour}-{args.end_hour}.csv",
-        )
-
-    # Ensure output dir exists
-    os.makedirs(os.path.dirname(args.output_csv), exist_ok=True)
-
     try:
         aggregator = GefsAggregator(
             input_csv=args.input_csv,
-            output_csv=args.output_csv,
+            output_csv=args.output_csv,  # None for auto-generation, or explicit path
             start_hour=args.start_hour,
             end_hour=args.end_hour,
             step=args.step,
             logger=logger,
         )
         aggregator.aggregate()
+
+        # Log the actual output path
+        logger.info(f"Aggregation complete. Output: {aggregator.output_csv}")
+
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"Aggregation failed: {exc}")
         sys.exit(1)

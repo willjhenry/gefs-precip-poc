@@ -12,9 +12,12 @@ tp over the lead window, plus metadata on the aggregation range and valid times.
 
 import logging
 import os
-from typing import Iterable, List, Optional
+import re
+from typing import Iterable, List, Optional, Tuple
 
 import pandas as pd
+
+from hydro.common import build_gefs_basename
 
 
 class GefsAggregator:
@@ -48,7 +51,7 @@ class GefsAggregator:
     def __init__(
         self,
         input_csv: str,
-        output_csv: str,
+        output_csv: Optional[str] = None,
         start_hour: int = 120,
         end_hour: int = 168,
         step: int = 3,
@@ -60,6 +63,43 @@ class GefsAggregator:
         self.end_hour = end_hour
         self.step = step
         self.logger = logger or logging.getLogger(__name__)
+
+    def _parse_input_metadata(
+        self,
+    ) -> Tuple[Tuple[float, float], int, int, str]:
+        """
+        Parse location, lead_start, lead_end, and cycle from input filename.
+
+        Returns
+        -------
+        tuple
+            (location, lead_start, lead_end, cycle)
+        """
+        # Try to parse from new filename format first
+        basename = os.path.basename(self.input_csv)
+        pattern = r"gefs_tp_freq-3h_lat-([0-9p-]+)_lon-([0-9p-]+)_lead-(\d+)-(\d+)_cycle-(\d+)z"
+        match = re.search(pattern, basename)
+
+        if match:
+            lat_str, lon_str, lead_start_str, lead_end_str, cycle_str = (
+                match.groups()
+            )
+            # Convert lat/lon strings back to floats
+            lat = float(lat_str.replace("p", "."))
+            lon = float(lon_str.replace("p", "."))
+            lead_start = int(lead_start_str)
+            lead_end = int(lead_end_str)
+            cycle = cycle_str
+        else:
+            # Fallback to old format or defaults
+            self.logger.warning(
+                f"Could not parse metadata from filename {basename}, using defaults"
+            )
+            lat, lon = 47.5, 8.0  # Default location
+            lead_start, lead_end = self.start_hour, self.end_hour
+            cycle = "00"
+
+        return (lat, lon), lead_start, lead_end, cycle
 
     def generate_lead_hours(self) -> List[int]:
         """
@@ -212,14 +252,59 @@ class GefsAggregator:
         df = self.read_input()
         agg_df = self.aggregate_tp(df, lead_hours)
 
-        # Ensure output dir exists
-        os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
-        # find the max and min valid_datetime_start values, convert to YYYY-MM-DD
-        # add then add to the filename
-        date_range_str = f"{pd.to_datetime(agg_df['valid_datetime_start'].min()).strftime('%Y%m%d')}_{pd.to_datetime(agg_df['valid_datetime_start'].max()).strftime('%Y%m%d')}"
-        temp_output_csv = (
-            ".".join(self.output_csv.split(".")[:-1])
-            + f"_{date_range_str}.csv"
+        # Parse metadata from input filename
+        location, lead_start, lead_end, cycle = self._parse_input_metadata()
+
+        # Build output directory (same as input)
+        out_dir = os.path.dirname(self.input_csv)
+
+        # Build sum basename
+        sum_basename = build_gefs_basename(
+            kind="sum",
+            location=location,
+            lead_start=lead_start,
+            lead_end=lead_end,
+            cycle=cycle,
         )
-        agg_df.to_csv(temp_output_csv, index=False)
-        self.logger.info(f"Wrote aggregated CSV to {self.output_csv}")
+
+        # Compute date range: min(valid_datetime_start) to max(valid_datetime_end) - 1 sec
+        if not agg_df.empty and "valid_datetime_start" in agg_df.columns:
+            # Parse the string datetime columns back to datetime objects
+            start_datetimes = pd.to_datetime(
+                agg_df["valid_datetime_start"], errors="coerce"
+            )
+            # Extract end datetimes from the valid_datetime_range column
+            # Format: "YYYY-MM-DD HH:MM:SS to YYYY-MM-DD HH:MM:SS"
+            end_datetime_strs = (
+                agg_df["valid_datetime_range"].str.split(" to ").str[1]
+            )
+            end_datetimes = pd.to_datetime(end_datetime_strs, errors="coerce")
+
+            # Get the range boundaries
+            range_start = start_datetimes.min()
+            range_end = end_datetimes.max() - pd.Timedelta(seconds=1)  # type: ignore # Subtract 1 second as per spec
+
+            date_range_start = range_start.strftime("%Y%m%d")
+            date_range_end = range_end.strftime("%Y%m%d")
+            date_range_str = f"{date_range_start}-{date_range_end}"
+        else:
+            # Fallback
+            date_range_str = "unknown-unknown"
+
+        # Create final output path
+        final_name = f"{sum_basename}_{date_range_str}.csv"
+        auto_output_csv = os.path.join(out_dir, final_name)
+
+        # Use explicit output_csv if provided, otherwise use auto-generated path
+        final_output_csv = (
+            self.output_csv if self.output_csv is not None else auto_output_csv
+        )
+
+        # Ensure output dir exists
+        os.makedirs(os.path.dirname(final_output_csv), exist_ok=True)
+
+        agg_df.to_csv(final_output_csv, index=False)
+        self.logger.info(f"Wrote aggregated CSV to {final_output_csv}")
+
+        # Update self.output_csv for compatibility
+        self.output_csv = final_output_csv
