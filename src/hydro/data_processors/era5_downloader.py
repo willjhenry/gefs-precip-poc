@@ -13,6 +13,8 @@ import tempfile
 import zipfile
 from typing import Optional, Tuple
 
+import cdsapi
+
 from hydro.common import RAW_ERA5_DIR, grid_tags
 
 
@@ -153,9 +155,6 @@ class Era5Downloader:
         }
 
         try:
-            # Import here to avoid hard dependency at import-time for library users
-            import cdsapi  # type: ignore
-
             client = cdsapi.Client()
             client.retrieve(self.dataset, request, target=output_zip_or_nc)
             self.logger.info(
