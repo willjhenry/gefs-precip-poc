@@ -1,2 +1,3 @@
 [errors]
 no-matching-overload = false
+missing-attribute = false

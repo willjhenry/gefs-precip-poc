@@ -16,20 +16,15 @@ def gamma_nn_model(
         reg = tf.keras.regularizers.l2(l2)
     else:
         reg = None
-    # pyrefly: ignore
     inputs = tf.keras.Input(shape=(X_train.shape[1],))
     x = inputs
     for units in hidden_units:
-        # pyrefly: ignore
         x = tf.keras.layers.Dense(
             units, activation="relu", kernel_regularizer=reg
         )(x)
         if dropout_rate:
-            # pyrefly: ignore
             x = tf.keras.layers.Dropout(dropout_rate)(x)
-    # pyrefly: ignore
     outputs = tf.keras.layers.Dense(2, activation="softplus")(x)
-    # pyrefly: ignore
     model = tf.keras.Model(inputs, outputs)
     model.compile(optimizer="adam", loss=crps_loss)  # Custom loss
     return model
