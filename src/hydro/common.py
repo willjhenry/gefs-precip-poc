@@ -89,6 +89,49 @@ def tag_from_meta_path(meta_path: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def align_columns(
+    df: pd.DataFrame,
+    required_cols: list[str],
+    fill_value: float = 0.0,
+    dtype: type = float,
+) -> pd.DataFrame:
+    """Ensure a DataFrame contains required columns with numeric dtype.
+
+    For any missing column in ``required_cols``, this function creates it and
+    fills with ``fill_value``. All required columns are coerced to numeric and
+    NaNs are filled with ``fill_value``. Columns not listed in ``required_cols``
+    are left unchanged.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
+    required_cols : list[str]
+        Column names that must be present.
+    fill_value : float, optional
+        Value to use for missing columns and NaNs (default 0.0).
+    dtype : type, optional
+        Target dtype for required columns (default float).
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with at least the required columns present and numeric.
+    """
+    aligned = df.copy()
+    for col in required_cols:
+        if col not in aligned.columns:
+            aligned[col] = fill_value
+    # Coerce to numeric, fill NaNs, and ensure final dtype
+    aligned[required_cols] = (
+        aligned[required_cols]
+        .apply(pd.to_numeric, errors="coerce")
+        .fillna(fill_value)
+        .astype(dtype)
+    )
+    return aligned
+
+
 def _format_coord_component(value: float) -> str:
     """Format a coordinate as signed integer with 'p' as decimal separator.
 

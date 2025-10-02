@@ -32,6 +32,7 @@ import pandas as pd
 from hydro.common import (
     MODEL_ARTIFACTS_DIR,
     SCRIPTS_DIR,
+    align_columns,
     build_forecast_hours,
     build_live_prediction_filename,
     build_live_predictions_dir,
@@ -305,11 +306,9 @@ def main() -> None:
     if "bias" not in gefs_df.columns:
         gefs_df["bias"] = 1.0
 
-    # Align columns to pred_cols, filling missing with 0.0
-    for c in pred_cols:
-        if c not in gefs_df.columns:
-            gefs_df[c] = 0.0
-    X = gefs_df.loc[:, pred_cols].astype(float).fillna(0.0).values
+    # Align columns to pred_cols using shared helper
+    gefs_df = align_columns(gefs_df, pred_cols, fill_value=0.0, dtype=float)
+    X = gefs_df.loc[:, pred_cols].values
 
     # 4) Inference
     scaler = joblib.load(scaler_path)
