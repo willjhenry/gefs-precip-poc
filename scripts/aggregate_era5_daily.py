@@ -5,13 +5,12 @@ import argparse
 import glob
 import logging
 import os
-from typing import List
 
 from hydro.data_processors.era5_aggregator import Era5DailyAggregator
 
 
-def find_input_csvs(paths: List[str]) -> List[str]:
-    resolved: List[str] = []
+def find_input_csvs(paths: list[str]) -> list[str]:
+    resolved: list[str] = []
     for p in paths:
         if os.path.isdir(p):
             resolved.extend(glob.glob(os.path.join(p, "*.csv")))

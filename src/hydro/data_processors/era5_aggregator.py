@@ -4,7 +4,6 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 import pandas as pd
 
@@ -35,7 +34,7 @@ class Era5DailyAggregator:
     Methods return the path to the aggregated CSV written to PROCESSED_DIR.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         self.logger = logger or logging.getLogger(__name__)
         self.processed_dir = PROCESSED_DIR
         os.makedirs(self.processed_dir, exist_ok=True)

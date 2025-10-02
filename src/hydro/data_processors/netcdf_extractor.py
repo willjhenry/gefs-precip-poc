@@ -9,7 +9,6 @@ from __future__ import annotations
 import importlib.util
 import logging
 import os
-from typing import Optional
 
 import pandas as pd
 import xarray as xr
@@ -159,7 +158,7 @@ class NetCDFDataExtractor:
         self,
         file_path: str,
         output_dir: str,
-        prefix: Optional[str] = None,
+        prefix: str | None = None,
     ) -> str:
         """
         Extract to DataFrame and save as CSV.

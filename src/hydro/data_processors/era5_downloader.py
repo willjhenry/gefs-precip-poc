@@ -11,7 +11,6 @@ import logging
 import os
 import tempfile
 import zipfile
-from typing import Optional, Tuple
 
 import cdsapi
 
@@ -41,8 +40,8 @@ class Era5Downloader:
 
     def __init__(
         self,
-        location: Tuple[float, float],
-        logger: Optional[logging.Logger] = None,
+        location: tuple[float, float],
+        logger: logging.Logger | None = None,
         dataset: str = "reanalysis-era5-single-levels-timeseries",
     ) -> None:
         self.location = location

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timezone
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 import boto3
 import pandas as pd
@@ -32,7 +32,7 @@ PROCESSED_GEFS_DIR = os.path.join(PROCESSED_DIR, "gefs")
 PROCESSED_ERA5_DIR = os.path.join(PROCESSED_DIR, "era5")
 
 
-def find_latest_meta_under_tag_dirs(base_dir: str) -> Optional[str]:
+def find_latest_meta_under_tag_dirs(base_dir: str) -> str | None:
     """Return newest meta file path under model_artifacts/<tag>/.
 
     Expects artifacts to be organized as::
@@ -46,10 +46,10 @@ def find_latest_meta_under_tag_dirs(base_dir: str) -> Optional[str]:
 
     Returns
     -------
-    Optional[str]
+    str | None
         Path to the newest `meta_<tag>.json` found, or None if none exist.
     """
-    newest_path: Optional[str] = None
+    newest_path: str | None = None
     newest_mtime: float = -1.0
     try:
         subdirs = [
@@ -72,7 +72,7 @@ def find_latest_meta_under_tag_dirs(base_dir: str) -> Optional[str]:
     return newest_path
 
 
-def tag_from_meta_path(meta_path: str) -> Optional[str]:
+def tag_from_meta_path(meta_path: str) -> str | None:
     """Extract tag from a meta file path like ``.../meta_<tag>.json``.
 
     Parameters
@@ -82,7 +82,7 @@ def tag_from_meta_path(meta_path: str) -> Optional[str]:
 
     Returns
     -------
-    Optional[str]
+    str | None
         The extracted tag or None if it cannot be parsed.
     """
     m = re.search(r"meta_(.+)\.json$", os.path.basename(meta_path))
@@ -173,7 +173,7 @@ def grid_tags(lat: float, lon: float) -> str:
 
 
 def build_gefs_processed_dir(
-    location: Tuple[float, float],
+    location: tuple[float, float],
     lead_start: int,
     lead_end: int,
 ) -> str:
@@ -182,7 +182,7 @@ def build_gefs_processed_dir(
 
     Parameters
     ----------
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude.
     lead_start : int
         Start of lead time window (hours).
@@ -204,7 +204,7 @@ def build_gefs_processed_dir(
 
 def build_gefs_basename(
     kind: Literal["freq-3h", "sum"],
-    location: Tuple[float, float],
+    location: tuple[float, float],
     lead_start: int,
     lead_end: int,
     cycle: str,
@@ -216,7 +216,7 @@ def build_gefs_basename(
     ----------
     kind : Literal["freq-3h", "sum"]
         Type of GEFS file.
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude.
     lead_start : int
         Start of lead time window (hours).
@@ -275,14 +275,14 @@ def finalize_csv_with_date_range(csv_path: str, date_col: str) -> str:
 # ---------- Filename parsing helpers (standardized names) ----------
 
 
-def parse_grid_from_name(filename: str) -> Optional[Tuple[float, float]]:
+def parse_grid_from_name(filename: str) -> tuple[float, float] | None:
     """Parse grid (lat, lon) from standardized filename.
 
     Supports `lat-<latp>_lon-<lonp>` pattern used across GEFS/ERA5 outputs.
 
     Returns
     -------
-    Optional[Tuple[float, float]]
+    tuple[float, float] | None
         (lat, lon) in decimal degrees, or None if not found.
     """
     m = re.search(r"lat-([0-9p-]+)_lon-([0-9p-]+)", filename)
@@ -297,12 +297,12 @@ def parse_grid_from_name(filename: str) -> Optional[Tuple[float, float]]:
         return None
 
 
-def parse_lead_range_from_name(filename: str) -> Optional[Tuple[int, int]]:
+def parse_lead_range_from_name(filename: str) -> tuple[int, int] | None:
     """Parse lead hour range from filename, e.g., `lead-120-168`.
 
     Returns
     -------
-    Optional[Tuple[int, int]]
+    tuple[int, int] | None
         (start, end) if found, else None.
     """
     m = re.search(r"lead-(\d{2,3})-(\d{2,3})", filename)
@@ -314,24 +314,24 @@ def parse_lead_range_from_name(filename: str) -> Optional[Tuple[int, int]]:
         return None
 
 
-def parse_cycle_from_name(filename: str) -> Optional[str]:
+def parse_cycle_from_name(filename: str) -> str | None:
     """Parse cycle (e.g., `cycle-00z`) and return `00`.
 
     Returns
     -------
-    Optional[str]
+    str | None
         Cycle string without trailing 'z' or None if not found.
     """
     m = re.search(r"cycle-(\d{2})z", filename)
     return m.group(1) if m else None
 
 
-def parse_date_range_from_name(filename: str) -> Optional[Tuple[str, str]]:
+def parse_date_range_from_name(filename: str) -> tuple[str, str] | None:
     """Parse date range suffix `_YYYYMMDD-YYYYMMDD`.
 
     Returns
     -------
-    Optional[Tuple[str, str]]
+    tuple[str, str] | None
         (start, end) as strings if found, else None.
     """
     m = re.search(r"_(\d{8})-(\d{8})\.csv$", filename)
@@ -344,7 +344,7 @@ def parse_date_range_from_name(filename: str) -> Optional[Tuple[str, str]]:
 
 
 def build_era5_processed_dir(
-    location: Tuple[float, float],
+    location: tuple[float, float],
     variable: Literal["tp", "t2m"],
     frequency: Literal["hourly", "daily"],
 ) -> str:
@@ -353,7 +353,7 @@ def build_era5_processed_dir(
 
     Parameters
     ----------
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude.
     variable : Literal["tp", "t2m"]
         Variable name.
@@ -374,7 +374,7 @@ def build_era5_processed_dir(
 def build_era5_basename(
     variable: Literal["tp", "t2m"],
     frequency: Literal["hourly", "daily"],
-    location: Tuple[float, float],
+    location: tuple[float, float],
 ) -> str:
     """
     Basename for ERA5 files (no date range or extension).
@@ -385,7 +385,7 @@ def build_era5_basename(
         Variable name.
     frequency : Literal["hourly", "daily"]
         Frequency of data.
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude.
 
     Returns
@@ -409,7 +409,7 @@ def build_era5_basename(
 
 def build_live_predictions_dir(
     model_tag: str,
-    location: Tuple[float, float],
+    location: tuple[float, float],
     lead_start: int,
     lead_end: int,
 ) -> str:
@@ -423,7 +423,7 @@ def build_live_predictions_dir(
     ----------
     model_tag : str
         Artifact tag identifying a model run.
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude of the grid point.
     lead_start : int
         Start of the lead window in hours.
@@ -446,7 +446,7 @@ def build_live_predictions_dir(
 
 
 def build_live_prediction_filename(
-    location: Tuple[float, float],
+    location: tuple[float, float],
     lead_start: int,
     lead_end: int,
     cycle: str,
@@ -461,7 +461,7 @@ def build_live_prediction_filename(
 
     Parameters
     ----------
-    location : Tuple[float, float]
+    location : tuple[float, float]
         Latitude and longitude of the grid point.
     lead_start : int
         Start of the lead window in hours.

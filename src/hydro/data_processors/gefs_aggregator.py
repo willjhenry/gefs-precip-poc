@@ -12,7 +12,7 @@ tp over the lead window, plus metadata on the aggregation range and valid times.
 
 import logging
 import os
-from typing import Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -57,11 +57,11 @@ class GefsAggregator:
     def __init__(
         self,
         input_csv: str,
-        output_csv: Optional[str] = None,
+        output_csv: str | None = None,
         start_hour: int = 120,
         end_hour: int = 168,
         step: int = 3,
-        logger: Optional[logging.Logger] = None,
+        logger: logging.Logger | None = None,
     ) -> None:
         self.input_csv = input_csv
         self.output_csv = output_csv
@@ -72,13 +72,13 @@ class GefsAggregator:
 
     def _parse_input_metadata(
         self,
-    ) -> Tuple[Tuple[float, float], int, int, str]:
+    ) -> tuple[tuple[float, float], int, int, str]:
         """
         Parse location, lead_start, lead_end, and cycle from input filename.
 
         Returns
         -------
-        tuple
+        tuple[tuple[float, float], int, int, str]
             (location, lead_start, lead_end, cycle)
         """
         basename = os.path.basename(self.input_csv)
@@ -108,13 +108,13 @@ class GefsAggregator:
 
         return (lat, lon), lead_start, lead_end, cycle
 
-    def generate_lead_hours(self) -> List[int]:
+    def generate_lead_hours(self) -> list[int]:
         """
         Generate the list of lead hours for aggregation.
 
         Returns
         -------
-        list of int
+        list[int]
             Lead hours, e.g., [120, 123, ..., 168].
         """
         return list(range(self.start_hour, self.end_hour + 1, self.step))
@@ -175,7 +175,7 @@ class GefsAggregator:
         pandas.DataFrame
             Aggregated DataFrame with summed tp and metadata columns.
         """
-        hours_list: List[int] = [int(h) for h in lead_hours]
+        hours_list: list[int] = [int(h) for h in lead_hours]
         filtered = df[df["forecast_hour"].isin(hours_list)].copy()
 
         if filtered.empty:

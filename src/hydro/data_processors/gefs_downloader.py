@@ -20,7 +20,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
 
 import boto3
 import pandas as pd
@@ -62,11 +61,11 @@ class GEFSDownloader:
         self,
         start_date: str,
         end_date: str,
-        location: Tuple[float, float],
-        cycle: Optional[str] = None,
-        forecast_hours: Optional[List[int]] = None,
-        ensemble_members: Optional[List[str]] = None,
-        logger: Optional[logging.Logger] = None,
+        location: tuple[float, float],
+        cycle: str | None = None,
+        forecast_hours: list[int] | None = None,
+        ensemble_members: list[str] | None = None,
+        logger: logging.Logger | None = None,
         test: bool = False,
     ):
         self.start_date = start_date
@@ -354,7 +353,7 @@ class GEFSDownloader:
                 f"Could not clean up index files for {filename}: {e}"
             )
 
-    def _load_checkpoint(self) -> Optional[Tuple[str, str, int]]:
+    def _load_checkpoint(self) -> tuple[str, str, int] | None:
         """Load checkpoint from JSON file."""
         if os.path.exists(self.checkpoint_file):
             try:

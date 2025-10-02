@@ -31,18 +31,17 @@ import argparse
 import logging
 import os
 import sys
-from typing import Tuple
 
 from hydro.common import DATA_DIR, SCRIPTS_DIR
 from hydro.data_processors.gefs_aggregator import GefsAggregator
 
 
-def setup_paths() -> Tuple[str, str]:
+def setup_paths() -> tuple[str, str]:
     """Compute project paths.
 
     Returns
     -------
-    tuple of str
+    tuple[str, str]
         (scripts_dir, processed_dir)
     """
     scripts_dir = SCRIPTS_DIR
