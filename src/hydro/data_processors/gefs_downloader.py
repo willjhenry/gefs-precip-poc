@@ -306,6 +306,7 @@ class GEFSDownloader:
                 filename,
                 engine="cfgrib",
                 filter_by_keys={"typeOfLevel": "surface", "stepType": "accum"},
+                decode_timedelta=True,
             )
 
             # Select Rhine point
