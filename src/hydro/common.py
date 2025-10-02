@@ -15,15 +15,41 @@ from botocore.config import Config
 RHINE_POINT = (47.5565597, 8.0483)
 GRID_RHINE_POINT = (47.5, 8.0)
 
-# Project paths (computed relative to this file's location)
+# Project paths (code root and runtime base)
 PROJECT_ROOT: str = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
-MODEL_ARTIFACTS_DIR: str = os.path.join(PROJECT_ROOT, "model_artifacts")
-SCRIPTS_DIR: str = os.path.join(PROJECT_ROOT, "scripts")
-DATA_DIR: str = os.path.join(PROJECT_ROOT, "data")
+
+# Runtime base directory selection
+# - Default to project root locally
+# - Use /tmp/hydro automatically on AWS Lambda (writable dir)
+# - Allow explicit override via HYDRO_RUNTIME_BASE_DIR
+RUNTIME_BASE_DIR: str = os.environ.get(
+    "HYDRO_RUNTIME_BASE_DIR",
+    os.path.join("/tmp", "hydro")
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    else PROJECT_ROOT,
+)
+
+# Artifacts are typically packaged read-only with the code; allow override
+MODEL_ARTIFACTS_DIR: str = os.environ.get(
+    "MODEL_ARTIFACTS_DIR",
+    os.path.join(PROJECT_ROOT, "model_artifacts"),
+)
+
+# Scripts directory (code path); allow override but usually read-only on Lambda
+SCRIPTS_DIR: str = os.environ.get(
+    "SCRIPTS_DIR", os.path.join(PROJECT_ROOT, "scripts")
+)
+
+# Data and results live under the runtime base directory so they are writable
+DATA_DIR: str = os.environ.get(
+    "DATA_DIR", os.path.join(RUNTIME_BASE_DIR, "data")
+)
 RAW_ERA5_DIR: str = os.path.join(DATA_DIR, "raw", "era5")
-RESULTS_DIR: str = os.path.join(PROJECT_ROOT, "results")
+RESULTS_DIR: str = os.environ.get(
+    "RESULTS_DIR", os.path.join(RUNTIME_BASE_DIR, "results")
+)
 PREDICTIONS_DIR: str = os.path.join(RESULTS_DIR, "predictions")
 
 INTERIM_GEFS_DIR = os.path.join(DATA_DIR, "interim", "gefs")
