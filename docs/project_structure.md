@@ -39,7 +39,7 @@ project_root/
 │ ├── plots/
 │ ├── metrics/
 │ └── reports/
-├── models/ # Placeholder for saved models
+├── model_artifacts/ # Placeholder for saved models
 ├── tests/ # Unit tests (optional)
 ├── docs/ # Documentation
 │ ├── data_processing_guide.md
