@@ -38,7 +38,7 @@ This plan is designed for a weekend build (e.g., Saturday: Phases 1-3; Sunday: P
 - **Goal**: Build a fast NN that adjusts GEFS ensemble to Gamma params via CRPS loss.
 - **Steps**:
   1. Inputs: Construct predictive descriptors of from the ensemble members + other predictors.
-  2. Architecture: Simple MLP (2-3 layers, 64 units, ReLU) outputting Gamma shape/scale (2 params).
+  2. Architecture: Simple MLP (2-3 layers, 64 units, ReLU) outputting Gamma shape/rate (2 params).
   3. Loss: CRPS for Gamma dist (use `tensorflow_probability` for dist; approx CRPS via Monte Carlo samples from predicted Gamma).
   4. Train: 50-100 epochs, Adam optimizer, batch 32-64. Validate on holdout.
   5. Inference: For test, sample from adjusted Gamma to get dist; compute ensemble blend if needed.

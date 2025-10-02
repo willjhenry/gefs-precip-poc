@@ -76,7 +76,7 @@ This document tracks progress on the toy ML project for post-processing GEFS pre
 
 ### Phase 4: CRPS-Optimized Neural Network Development (0%)
 
-**Goal**: MLP for Gamma params (shape/scale) with CRPS loss (2 hours).
+**Goal**: MLP for Gamma params (shape/rate) with CRPS loss (2 hours).
 
 **Completed**: N/A  
 **Pending**:

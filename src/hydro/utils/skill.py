@@ -36,12 +36,10 @@ def calculate_crps_from_gamma_params(gamma_params, obs_array, N_mc=100):
     shapes = np.maximum(
         gamma_params[:, 0:1], 1e-3
     )  # (N_test, 1), the 0:1 preserves the shape
-    scales = np.maximum(gamma_params[:, 1:2], 1e-3)  # (N_test, 1)
+    rates = np.maximum(gamma_params[:, 1:2], 1e-3)  # (N_test, 1)
     crps_model = []
     # Batch Gamma dists and sample (N_test, N_mc)
-    # NOTE: scale is actually being used as rate, but that is fine as long
-    # as we are consistent
-    gamma_dists = tfd.Gamma(shapes, scales)  # Rate = 1/scale for TFP
+    gamma_dists = tfd.Gamma(shapes, rates)  # Rate = 1/scale for TFP
     samples = gamma_dists.sample(
         N_mc
     ).numpy()  # To NumPy for vectorized_crps; shape (N_test, N_mc)
