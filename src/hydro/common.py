@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime, timezone
 from typing import Literal, Optional, Tuple
 
+import boto3
 import pandas as pd
+from botocore import UNSIGNED
+from botocore.config import Config
 
 RHINE_POINT = (47.5565597, 8.0483)
 GRID_RHINE_POINT = (47.5, 8.0)
@@ -19,11 +23,70 @@ MODEL_ARTIFACTS_DIR: str = os.path.join(PROJECT_ROOT, "model_artifacts")
 SCRIPTS_DIR: str = os.path.join(PROJECT_ROOT, "scripts")
 DATA_DIR: str = os.path.join(PROJECT_ROOT, "data")
 RAW_ERA5_DIR: str = os.path.join(DATA_DIR, "raw", "era5")
+RESULTS_DIR: str = os.path.join(PROJECT_ROOT, "results")
+PREDICTIONS_DIR: str = os.path.join(RESULTS_DIR, "predictions")
 
 INTERIM_GEFS_DIR = os.path.join(DATA_DIR, "interim", "gefs")
 PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
 PROCESSED_GEFS_DIR = os.path.join(PROCESSED_DIR, "gefs")
 PROCESSED_ERA5_DIR = os.path.join(PROCESSED_DIR, "era5")
+
+
+def find_latest_meta_under_tag_dirs(base_dir: str) -> Optional[str]:
+    """Return newest meta file path under model_artifacts/<tag>/.
+
+    Expects artifacts to be organized as::
+
+        model_artifacts/<tag>/meta_<tag>.json
+
+    Parameters
+    ----------
+    base_dir : str
+        Path to the `model_artifacts` directory.
+
+    Returns
+    -------
+    Optional[str]
+        Path to the newest `meta_<tag>.json` found, or None if none exist.
+    """
+    newest_path: Optional[str] = None
+    newest_mtime: float = -1.0
+    try:
+        subdirs = [
+            d
+            for d in os.listdir(base_dir)
+            if os.path.isdir(os.path.join(base_dir, d))
+        ]
+    except FileNotFoundError:
+        return None
+    for tag in subdirs:
+        meta_path = os.path.join(base_dir, tag, f"meta_{tag}.json")
+        if os.path.exists(meta_path):
+            try:
+                mtime = os.path.getmtime(meta_path)
+            except OSError:
+                continue
+            if mtime > newest_mtime:
+                newest_mtime = mtime
+                newest_path = meta_path
+    return newest_path
+
+
+def tag_from_meta_path(meta_path: str) -> Optional[str]:
+    """Extract tag from a meta file path like ``.../meta_<tag>.json``.
+
+    Parameters
+    ----------
+    meta_path : str
+        Path to the meta JSON file.
+
+    Returns
+    -------
+    Optional[str]
+        The extracted tag or None if it cannot be parsed.
+    """
+    m = re.search(r"meta_(.+)\.json$", os.path.basename(meta_path))
+    return m.group(1) if m else None
 
 
 def _format_coord_component(value: float) -> str:
@@ -299,3 +362,130 @@ def build_era5_basename(
         return f"era5_{variable}_freq-1d_{grid_tags(lat, lon)}"
     else:
         raise ValueError(f"Invalid frequency: {frequency}")
+
+
+def build_live_predictions_dir(
+    model_tag: str,
+    location: Tuple[float, float],
+    lead_start: int,
+    lead_end: int,
+) -> str:
+    """Build live predictions directory path.
+
+    Returns a path of the form:
+
+    results/predictions/live/<model_tag>/<grid>/lead_<start>-<end>/
+
+    Parameters
+    ----------
+    model_tag : str
+        Artifact tag identifying a model run.
+    location : Tuple[float, float]
+        Latitude and longitude of the grid point.
+    lead_start : int
+        Start of the lead window in hours.
+    lead_end : int
+        End of the lead window in hours.
+
+    Returns
+    -------
+    str
+        Directory path for live predictions output.
+    """
+    lat, lon = location
+    return os.path.join(
+        PREDICTIONS_DIR,
+        "live",
+        model_tag,
+        grid_tags(lat, lon),
+        f"lead_{lead_start}-{lead_end}",
+    )
+
+
+def build_live_prediction_filename(
+    location: Tuple[float, float],
+    lead_start: int,
+    lead_end: int,
+    cycle: str,
+    timestamp_utc: str,
+    fmt: str,
+) -> str:
+    """Build a live prediction filename.
+
+    The filename follows:
+
+    live_<timestampZ>_<grid>_lead-<start>-<end>_cycle-<cycle>z.<fmt>
+
+    Parameters
+    ----------
+    location : Tuple[float, float]
+        Latitude and longitude of the grid point.
+    lead_start : int
+        Start of the lead window in hours.
+    lead_end : int
+        End of the lead window in hours.
+    cycle : str
+        Cycle string (e.g., "00", "06").
+    timestamp_utc : str
+        UTC timestamp string (e.g., "YYYYMMDDTHHMMSSZ").
+    fmt : str
+        File extension to use (e.g., "csv", "json").
+
+    Returns
+    -------
+    str
+        Filename (not including directory path).
+    """
+    lat, lon = location
+    return (
+        f"live_{timestamp_utc}_{grid_tags(lat, lon)}_"
+        f"lead-{lead_start}-{lead_end}_cycle-{cycle}z.{fmt}"
+    )
+
+
+def utc_timestamp() -> str:
+    """Return current UTC time in YYYYMMDDTHHMMSSZ format."""
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def build_forecast_hours(start: int, end: int, step: int) -> list[int]:
+    """Generate an inclusive range of forecast hours.
+
+    Parameters
+    ----------
+    start : int
+        Start hour (inclusive).
+    end : int
+        End hour (inclusive).
+    step : int
+        Step in hours.
+
+    Returns
+    -------
+    list[int]
+        Sequence of forecast hours.
+    """
+    return list(range(start, end + 1, step))
+
+
+def s3_object_exists(bucket: str, key: str) -> bool:
+    """Return True if an S3 object exists using unsigned access.
+
+    Parameters
+    ----------
+    bucket : str
+        S3 bucket name.
+    key : str
+        S3 object key.
+
+    Returns
+    -------
+    bool
+        True if the object exists, else False.
+    """
+    s3_client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+    try:
+        s3_client.head_object(Bucket=bucket, Key=key)
+        return True
+    except Exception:
+        return False
