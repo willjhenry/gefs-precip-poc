@@ -495,8 +495,7 @@ class DatasetAssembler:
                 "t2m_max": "era5_t2m_max_lag1",
             }
         )
-
-        merged = merged.merge(tp_lag, on="valid_datetime_start")
+        merged = merged.join(tp_lag, on="lag1_day_start")
 
         merged = merged.join(t2m_lag, on="lag1_day_start")
 
