@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Literal, Tuple
+import re
+from typing import Literal, Optional, Tuple
 
 import pandas as pd
 
@@ -163,6 +164,77 @@ def finalize_csv_with_date_range(csv_path: str, date_col: str) -> str:
     if final_path != csv_path:
         os.rename(csv_path, final_path)
     return final_path
+
+
+# ---------- Filename parsing helpers (standardized names) ----------
+
+
+def parse_grid_from_name(filename: str) -> Optional[Tuple[float, float]]:
+    """Parse grid (lat, lon) from standardized filename.
+
+    Supports `lat-<latp>_lon-<lonp>` pattern used across GEFS/ERA5 outputs.
+
+    Returns
+    -------
+    Optional[Tuple[float, float]]
+        (lat, lon) in decimal degrees, or None if not found.
+    """
+    m = re.search(r"lat-([0-9p-]+)_lon-([0-9p-]+)", filename)
+    if not m:
+        return None
+    lat_str, lon_str = m.groups()
+    try:
+        lat = float(lat_str.replace("p", "."))
+        lon = float(lon_str.replace("p", "."))
+        return (lat, lon)
+    except Exception:
+        return None
+
+
+def parse_lead_range_from_name(filename: str) -> Optional[Tuple[int, int]]:
+    """Parse lead hour range from filename, e.g., `lead-120-168`.
+
+    Returns
+    -------
+    Optional[Tuple[int, int]]
+        (start, end) if found, else None.
+    """
+    m = re.search(r"lead-(\d{2,3})-(\d{2,3})", filename)
+    if not m:
+        return None
+    try:
+        return (int(m.group(1)), int(m.group(2)))
+    except Exception:
+        return None
+
+
+def parse_cycle_from_name(filename: str) -> Optional[str]:
+    """Parse cycle (e.g., `cycle-00z`) and return `00`.
+
+    Returns
+    -------
+    Optional[str]
+        Cycle string without trailing 'z' or None if not found.
+    """
+    m = re.search(r"cycle-(\d{2})z", filename)
+    return m.group(1) if m else None
+
+
+def parse_date_range_from_name(filename: str) -> Optional[Tuple[str, str]]:
+    """Parse date range suffix `_YYYYMMDD-YYYYMMDD`.
+
+    Returns
+    -------
+    Optional[Tuple[str, str]]
+        (start, end) as strings if found, else None.
+    """
+    m = re.search(r"_(\d{8})-(\d{8})\.csv$", filename)
+    if m:
+        return (m.group(1), m.group(2))
+    m = re.search(r"_(\d{8})_(\d{8})\.csv$", filename)
+    if m:
+        return (m.group(1), m.group(2))
+    return None
 
 
 def build_era5_processed_dir(

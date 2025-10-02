@@ -12,12 +12,18 @@ tp over the lead window, plus metadata on the aggregation range and valid times.
 
 import logging
 import os
-import re
 from typing import Iterable, List, Optional, Tuple
 
 import pandas as pd
 
-from hydro.common import build_gefs_basename, build_gefs_processed_dir
+from hydro.common import (
+    GRID_RHINE_POINT,
+    build_gefs_basename,
+    build_gefs_processed_dir,
+    parse_cycle_from_name,
+    parse_grid_from_name,
+    parse_lead_range_from_name,
+)
 
 
 class GefsAggregator:
@@ -75,29 +81,30 @@ class GefsAggregator:
         tuple
             (location, lead_start, lead_end, cycle)
         """
-        # Try to parse from new filename format first
         basename = os.path.basename(self.input_csv)
-        pattern = r"gefs_tp_freq-3h_lat-([0-9p-]+)_lon-([0-9p-]+)_lead-(\d+)-(\d+)_cycle-(\d+)z"
-        match = re.search(pattern, basename)
+        # Grid
+        grid = parse_grid_from_name(basename)
+        # Lead
+        lead = parse_lead_range_from_name(basename)
+        # Cycle
+        cycle = parse_cycle_from_name(basename) or "00"
 
-        if match:
-            lat_str, lon_str, lead_start_str, lead_end_str, cycle_str = (
-                match.groups()
-            )
-            # Convert lat/lon strings back to floats
-            lat = float(lat_str.replace("p", "."))
-            lon = float(lon_str.replace("p", "."))
-            lead_start = int(lead_start_str)
-            lead_end = int(lead_end_str)
-            cycle = cycle_str
+        if grid:
+            lat, lon = grid
         else:
-            # Fallback to old format or defaults
             self.logger.warning(
-                f"Could not parse metadata from filename {basename}, using defaults"
+                f"Could not parse grid from filename {basename}, using defaults"
             )
-            lat, lon = 47.5, 8.0  # Default location
+            lat = GRID_RHINE_POINT[0]
+            lon = GRID_RHINE_POINT[1]
+
+        if lead:
+            lead_start, lead_end = lead
+        else:
+            self.logger.warning(
+                f"Could not parse lead range from filename {basename}, using CLI defaults"
+            )
             lead_start, lead_end = self.start_hour, self.end_hour
-            cycle = "00"
 
         return (lat, lon), lead_start, lead_end, cycle
 

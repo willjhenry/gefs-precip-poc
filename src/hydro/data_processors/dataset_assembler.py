@@ -9,7 +9,12 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from hydro.common import PROCESSED_DIR
+from hydro.common import (
+    PROCESSED_DIR,
+    parse_date_range_from_name,
+    parse_grid_from_name,
+    parse_lead_range_from_name,
+)
 
 
 @dataclass
@@ -41,34 +46,23 @@ class DatasetAssembler:
     def _parse_date_range_from_name(
         filename: str,
     ) -> tuple[str | None, str | None]:
-        # Try new format first: YYYYMMDD-YYYYMMDD
-        m = re.search(r"_(\d{8})-(\d{8})\.csv$", filename)
-        if m:
-            return m.group(1), m.group(2)
-        # Fallback to old format: YYYYMMDD_YYYYMMDD
-        m = re.search(r"_(\d{8})_(\d{8})", filename)
-        if m:
-            return m.group(1), m.group(2)
-        return None, None
+        parsed = parse_date_range_from_name(filename)
+        return parsed if parsed else (None, None)
 
     @staticmethod
     def _parse_lead_range_from_name(filename: str) -> str | None:
-        # Support new format: ..._lead-120-144_...
-        m = re.search(r"lead-(\d{2,3}-\d{2,3})", filename)
-        if m:
-            return m.group(1)
-        # Fallback to old format: ..._120-144.csv or ..._120-144_YYYYMMDD_YYYYMMDD.csv
+        parsed = parse_lead_range_from_name(filename)
+        if parsed:
+            return f"{parsed[0]}-{parsed[1]}"
+        # Fallback to old format
         m = re.search(r"_(\d{2,3}-\d{2,3})(?:_|\.csv$)", filename)
         return m.group(1) if m else None
 
     @staticmethod
     def _extract_grid_suffix(filename: str) -> str:
-        # Try new format first: lat-47p5_lon-8p0
-        m = re.search(r"lat-([0-9p-]+)_lon-([0-9p-]+)", filename)
-        if m:
-            lat_str, lon_str = m.groups()
-            lat = float(lat_str.replace("p", "."))
-            lon = float(lon_str.replace("p", "."))
+        parsed = parse_grid_from_name(filename)
+        if parsed:
+            lat, lon = parsed
             return f"({lat},{lon})"
         # Fallback to old format: (-47p5,-8p0)
         m = re.search(r"(\(-?\d+p\d,\-?\d+p\d\))", filename)
@@ -332,7 +326,7 @@ class DatasetAssembler:
         """
         # GEFS
         gefs_paths = self._get_gefs_paths(gefs_csv)
-        gefs_wide = self._process_gefs_columns(gefs_paths)
+        gefs_wide = self.process_gefs_columns(gefs_paths)
 
         # ERA5
         merged = self._merge_in_era5_features(
@@ -340,7 +334,7 @@ class DatasetAssembler:
         )
 
         # Monthly indicator columns
-        merged = self._add_monthly_indicator_columns(merged)
+        merged = self.add_monthly_indicator_columns(merged)
 
         # Add a bias column (column of ones) - is this needed for tensor flow?
         merged["bias"] = 1
@@ -414,7 +408,22 @@ class DatasetAssembler:
             gefs_paths = [gefs_csv]
         return gefs_paths
 
-    def _process_gefs_columns(self, gefs_paths: list[str]) -> pd.DataFrame:
+    def process_gefs_columns(self, gefs_paths: list[str]) -> pd.DataFrame:
+        """Pivot GEFS aggregated rows to wide and compute ensemble statistics.
+
+        Parameters
+        ----------
+        gefs_paths : list[str]
+            One or more paths to GEFS aggregated CSVs.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Wide GEFS feature frame with member columns prefixed by ``gefs_``
+            and ensemble statistics: ``gefs_ensemble_min``, ``gefs_ensemble_max``,
+            ``gefs_ensemble_q10``, ``gefs_ensemble_q90``, ``gefs_ensemble_skew``,
+            ``gefs_ensemble_kurtosis``.
+        """
         gefs_df = self._read_gefs_concat(gefs_paths)
         gefs_wide = self._pivot_gefs(gefs_df, self.logger)
 
@@ -504,11 +513,20 @@ class DatasetAssembler:
 
         return merged
 
-    def _add_monthly_indicator_columns(
-        self, merged: pd.DataFrame
-    ) -> (
-        pd.DataFrame
-    ):  # Add monthly indicator columns based on valid_datetime_start
+    @staticmethod
+    def add_monthly_indicator_columns(merged: pd.DataFrame) -> pd.DataFrame:
+        """Add monthly one-hot indicators based on ``valid_datetime_start``.
+
+        Parameters
+        ----------
+        merged : pandas.DataFrame
+            DataFrame containing a ``valid_datetime_start`` datetime column.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The same DataFrame with 12 month indicator columns ``jan``…``dec``.
+        """
         if "valid_datetime_start" in merged.columns:
             month_names = [
                 "jan",
