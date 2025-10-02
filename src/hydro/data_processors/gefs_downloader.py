@@ -372,6 +372,10 @@ class GEFSDownloader:
 
     def _save_checkpoint(self, date: str, member: str, hour: int) -> None:
         """Save current progress to checkpoint file."""
+        # Skip checkpoint creation on Lambda (read-only filesystem, ephemeral execution)
+        if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+            return
+
         checkpoint = {
             "last_date": date,
             "last_member": member,
