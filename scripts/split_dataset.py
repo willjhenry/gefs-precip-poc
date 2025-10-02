@@ -9,7 +9,7 @@ import sys
 
 import pandas as pd
 
-from hydro.common import PROCESSED_DIR, SCRIPTS_DIR
+from hydro.common import SCRIPTS_DIR
 
 """Set up logging configuration."""
 LOG_FILE = os.path.join(SCRIPTS_DIR, "split_dataset.log")
@@ -52,11 +52,6 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="End date for test set (inclusive, YYYY-MM-DD).",
     )
-    parser.add_argument(
-        "--output-dir",
-        default=PROCESSED_DIR,
-        help="Directory to write train and test CSVs.",
-    )
     return parser.parse_args()
 
 
@@ -82,28 +77,64 @@ def load_and_filter(
     return filtered
 
 
-def generate_output_paths(
-    base_path: str, start_date: str, end_date: str, suffix: str
+def generate_output_path(
+    base_path: str,
+    df: pd.DataFrame,
+    prefix: str,
+    fallback_start: str | None = None,
+    fallback_end: str | None = None,
 ) -> str:
-    """Generate output path with date range suffix, removing existing date range from base name.
+    """Generate output path in same directory with prefix and actual date range.
+
+    The filename is constructed as:
+        <prefix>_<base_name_without_date>_<YYYYMMDD-YYYYMMDD>.csv
+
+    If ``df`` has no valid dates, falls back to provided ``fallback_start`` and
+    ``fallback_end`` (expected format YYYY-MM-DD). Any existing trailing date
+    suffix in ``base_path`` is removed before composing the new name.
 
     Parameters
     ----------
     base_path : str
         Input CSV path.
-    start_date : str
-        Start date (YYYY-MM-DD).
-    end_date : str
-        End date (YYYY-MM-DD).
-    suffix : str
-        Suffix like '_train' or '_test'.
+    df : pd.DataFrame
+        Split dataframe containing 'valid_datetime_start'.
+    prefix : str
+        File prefix, e.g., 'train' or 'test'.
+    fallback_start : str | None
+        Optional fallback start date (YYYY-MM-DD).
+    fallback_end : str | None
+        Optional fallback end date (YYYY-MM-DD).
+
+    Returns
+    -------
+    str
+        Output path.
     """
-    base_name = os.path.basename(base_path).replace(".csv", "")
-    # Remove trailing date range if present (e.g., _20230106_20250206)
-    base_name = re.sub(r"_(\d{8})_(\d{8})$", "", base_name)
-    date_suffix = f"{start_date.replace('-', '')}_{end_date.replace('-', '')}"
+
+    base_dir = os.path.dirname(base_path)
+    stem, ext = os.path.splitext(os.path.basename(base_path))
+    # Strip trailing date range if present (supports '_' or '-')
+    stem = re.sub(r"_(\d{8})[-_](\d{8})$", "", stem)
+
+    start_str: str | None = None
+    end_str: str | None = None
+    if "valid_datetime_start" in df.columns and not df.empty:
+        dates = pd.to_datetime(df["valid_datetime_start"], errors="coerce")
+        if not dates.isna().all():
+            start_str = dates.min().strftime("%Y%m%d")
+            end_str = dates.max().strftime("%Y%m%d")
+
+    if start_str is None or end_str is None:
+        if fallback_start and fallback_end:
+            start_str = fallback_start.replace("-", "")
+            end_str = fallback_end.replace("-", "")
+        else:
+            # As a last resort, omit the date range
+            return os.path.join(base_dir, f"{prefix}_{stem}{ext}")
+
     return os.path.join(
-        os.path.dirname(base_path), f"{base_name}_{date_suffix}{suffix}.csv"
+        base_dir, f"{prefix}_{stem}_{start_str}-{end_str}{ext}"
     )
 
 
@@ -128,16 +159,23 @@ def main() -> None:
             args.dataset_csv, args.test_start, args.test_end, logger
         )
 
-        # Generate output paths
-        train_output = generate_output_paths(
-            args.dataset_csv, args.train_start, args.train_end, "_train"
+        # Generate output paths using actual date ranges in each split
+        train_output = generate_output_path(
+            args.dataset_csv,
+            train_df,
+            "train",
+            None,
+            None,
         )
-        test_output = generate_output_paths(
-            args.dataset_csv, args.test_start, args.test_end, "_test"
+        test_output = generate_output_path(
+            args.dataset_csv,
+            test_df,
+            "test",
+            None,
+            None,
         )
 
         # Write
-        os.makedirs(args.output_dir, exist_ok=True)
         train_df.to_csv(train_output, index=False)
         test_df.to_csv(test_output, index=False)
         logger.info(
