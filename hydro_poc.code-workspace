@@ -123,6 +123,7 @@
       "pytest",
       "pytorch",
       "quantiles",
+      "regularizers",
       "reindex",
       "reqs",
       "rhine",
