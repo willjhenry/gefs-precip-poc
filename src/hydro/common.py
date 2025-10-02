@@ -14,6 +14,7 @@ GRID_RHINE_POINT = (47.5, 8.0)
 PROJECT_ROOT: str = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
+MODEL_ARTIFACTS_DIR: str = os.path.join(PROJECT_ROOT, "model_artifacts")
 SCRIPTS_DIR: str = os.path.join(PROJECT_ROOT, "scripts")
 DATA_DIR: str = os.path.join(PROJECT_ROOT, "data")
 RAW_ERA5_DIR: str = os.path.join(DATA_DIR, "raw", "era5")
