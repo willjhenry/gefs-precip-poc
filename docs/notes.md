@@ -4,3 +4,10 @@ We will focus on the High Rhine sub-basin, around the Laufenburg hydropower plan
 
 Laufenburg is city that is in both Switzerland and Germany, it is split by the
 Rhine River. The location is 47.5565 N, 8.0483 E.
+
+# Dev notes:
+
+2025-12-18:
+Fixed an error in the GEFS aggregator where the end_hour was inclusive. For example, for the lead 120-144 window, it was using the 144 hour forecast, which is for hours 144-147. So, we were actually getting the TP for 120 through 147, which is wrong, we just want 120 through 144, so the last GEFS forecast hour that we want is 141.
+
+Next I need to attach to the EC2 instance I had running to download more GEFS data to see what data we have and can download.

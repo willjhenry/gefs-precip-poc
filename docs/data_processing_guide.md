@@ -49,8 +49,11 @@ Note: GEFS source data (NOAA) is hosted in AWS `us-east-1`. For faster download 
 - Script: `scripts/download_gefs.py`
 - Outputs:
   - GRIB files → `data/interim/gefs/` (temporary, deleted after processing)
-  - Per-hour extraction CSV → `data/processed/gefs_ensemble_tp.csv`
+  - Per-hour extraction CSV → `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/gefs_tp_freq-3h_lat-<lat>_lon-<lon>_lead-<start>-<end>_cycle-<cycle>_<dates>.csv`
   - Logs/checkpoint → `scripts/gefs_download.log`, `scripts/gefs_checkpoint.json`
+- Notes:
+  - Files are organized by grid point and lead hour range in subdirectories
+  - Example: `data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250131.csv`
 
 Examples:
 
@@ -68,20 +71,25 @@ Examples:
 2. Aggregate GEFS total precipitation for the target window (e.g., 120–168 hours)
 
 - Script: `scripts/aggregate_gefs.py`
-- Input: `data/processed/gefs_ensemble_tp.csv`
-- Output: `data/processed/gefs_ensemble_tp_(47p5,8p0)_120-168.csv` (or similar)
+- Input: Per-hour extraction CSV from step 1 (e.g., `data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_*.csv`)
+- Output: Aggregated sum CSV written to the same directory as the input (e.g., `data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_sum_lat-47p5_lon-8p0_lead-120-168_cycle-00z_<dates>.csv`)
+- Notes:
+  - Both `scripts/download_gefs.py` and `scripts/aggregate_gefs.py` write to the structured directory: `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/`
+  - `download_gefs.py` creates `freq-3h` files (per-hour data)
+  - `aggregate_gefs.py` creates `sum` files (aggregated over the lead window)
 
 Examples:
 
 ```bash
-# Default 120–168 hours (step=3). Writes a suffixed CSV next to the input.
-/Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/aggregate_gefs.py
-
-# Customize input/output and lead-hours
+# Specify input explicitly (auto-generates output path in same directory)
 /Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/aggregate_gefs.py \
-  --input-csv data/processed/gefs_ensemble_tp.csv \
+  data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250131.csv
+
+# Customize lead-hours and output path
+/Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/aggregate_gefs.py \
+  data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/gefs_tp_freq-3h_lat-47p5_lon-8p0_lead-120-168_cycle-00z_20230101-20250131.csv \
   --start-hour 120 --end-hour 168 --step 3 \
-  --output-csv data/processed/gefs_ensemble_tp_120-168.csv
+  --output-csv data/processed/gefs/lat-47p5_lon-8p0/lead_120-168/custom_output.csv
 ```
 
 ## ERA5: Download, Extract to CSV, Aggregate Daily
@@ -138,8 +146,8 @@ Example:
 
 ## Outputs Summary
 
-- GEFS per-hour extraction: `data/processed/gefs_ensemble_tp.csv`
-- GEFS aggregated window: `data/processed/gefs_ensemble_tp_*_120-168.csv`
+- GEFS per-hour extraction: `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/gefs_tp_freq-3h_*.csv`
+- GEFS aggregated window: `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/gefs_tp_sum_*.csv`
 - ERA5 hourly CSVs: `data/processed/era5_tp_(47p5,8p0)_<start>_<end>.csv`, `era5_t2m_(...)`
 - ERA5 daily aggregated: `data/processed/era5_tp_daily_(47p5,8p0)_<start>_<end>.csv`, `era5_t2m_daily_(...)`
 
@@ -157,7 +165,7 @@ Build a single, wide CSV that contains:
 
 - Script: `scripts/build_dataset.py`
 - Inputs:
-  - GEFS aggregated CSV(s): `data/processed/gefs_ensemble_tp_(<grid>)_<lead-range>_<dates>.csv`
+  - GEFS aggregated CSV(s): `data/processed/gefs/lat-<lat>_lon-<lon>/lead_<start>-<end>/gefs_tp_sum_*.csv` (or legacy format: `data/processed/gefs_ensemble_tp_(<grid>)_<lead-range>_<dates>.csv`)
   - ERA5 daily tp: `data/processed/era5_tp_daily_(<grid>)_<dates>.csv`
   - ERA5 daily t2m: `data/processed/era5_t2m_daily_(<grid>)_<dates>.csv`
 - Output:
@@ -171,7 +179,7 @@ Examples:
 
 # Explicit inputs and output
 /Users/williamhenry/python_venvs/hydro_poc/bin/python scripts/build_dataset.py \
-  --gefs-csv data/processed/gefs_ensemble_tp_(47p5,8p0)_120-144_20230106_20250206.csv \
+  --gefs-csv data/processed/gefs/lat-47p5_lon-8p0/lead_120-144/gefs_tp_sum_lat-47p5_lon-8p0_lead-120-144_cycle-00z_20230106-20250206.csv \
   --era5-tp-daily data/processed/era5_tp_daily_(47p5,8p0)_20230101_20250215.csv \
   --era5-t2m-daily data/processed/era5_t2m_daily_(47p5,8p0)_20230101_20250215.csv \
   --output-csv data/processed/dataset_gefs_era5_(47p5,8p0)_120-144_20230106_20250206.csv

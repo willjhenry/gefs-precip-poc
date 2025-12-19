@@ -40,7 +40,9 @@ class GefsAggregator:
     start_hour : int, optional
         Starting lead hour (inclusive, default 120).
     end_hour : int, optional
-        Ending lead hour (inclusive, default 168).
+        Ending lead hour (exclusive, default 168). Excluded because GEFS forecast hours
+        represent 3-hour accumulations FROM that hour (e.g., f144 = 144-147 accumulation).
+        To aggregate 120-144, use end_hour=144 which excludes f144.
     step : int, optional
         Step in hours between lead times (default 3).
     logger : logging.Logger, optional
@@ -52,6 +54,8 @@ class GefsAggregator:
     - Handles empty inputs gracefully (returns empty DF with expected columns).
     - Output columns: forecast_date, member, valid_datetime_start, valid_datetime_range,
     lead_hours_range, tp (summed over window).
+    - For a window 120-144, uses forecasts [120, 123, 126, 129, 132, 135, 138, 141]
+      (excludes 144 since f144 represents accumulation for 144-147).
     """
 
     def __init__(
@@ -115,9 +119,16 @@ class GefsAggregator:
         Returns
         -------
         list[int]
-            Lead hours, e.g., [120, 123, ..., 168].
+            Lead hours, e.g., [120, 123, ..., 141] for 120-144 window.
+
+        Notes
+        -----
+        The end_hour is excluded because GEFS forecast hours represent 3-hour
+        accumulations FROM that hour. For example, forecast hour 144 represents
+        accumulation for 144-147, so to get precipitation for 120-144, we only
+        use forecasts 120, 123, ..., 141.
         """
-        return list(range(self.start_hour, self.end_hour + 1, self.step))
+        return list(range(self.start_hour, self.end_hour, self.step))
 
     def read_input(self) -> pd.DataFrame:
         """
